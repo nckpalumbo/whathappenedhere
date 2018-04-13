@@ -1,0 +1,35 @@
+{
+  "name": "whathappenedhere",
+  "version": "1.0.0",
+  "description": "A game of hostage negotiation, and cold war era tensions",
+  "main": "./src/server.js",
+  "scripts": {
+    "test": "echo \"Tests complete\"",
+      "build": "babel ./client --out-file ./hosted/bundle.js",
+    "watch": "babel --watch ./client --out-file ./hosted/bundle.js",
+    "nodemon": "nodemon --watch ./src ./src/server.js",
+    "start": "node ./src/server.js",
+    "pretest": "eslint ./src --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nckpalumbo/whathappenedhere.git"
+  },
+  "author": "Nick Palumbo, Ben Levinson, Jason Noone",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/nckpalumbo/whathappenedhere/issues"
+  },
+  "homepage": "https://github.com/nckpalumbo/whathappenedhere#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-plugin-import": "^2.11.0",
+    "nodemon": "^1.17.3"
+  },
+  "dependencies": {
+    "socket.io": "^2.1.0"
+  }
+}
