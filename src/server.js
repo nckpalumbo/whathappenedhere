@@ -37,16 +37,10 @@ let explanations = [];
 fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
   if (err) throw err;
   outcomes = data.toString().split('\n');
-  for (let i = 0; i < outcomes.length; i++) {
-    console.log(outcomes[i]);
-  }
 });
 fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
   if (err) throw err;
   explanations = data.toString().split('\n');
-  for (let i = 0; i < explanations.length; i++) {
-    console.log(explanations[i]);
-  }
 });
 
 // Handle a connection to the server
@@ -101,17 +95,20 @@ io.on('connection', (sock) => {
   socket.on('roundStart', () => {
     outcomes = shuffle(outcomes);
     explanations = shuffle(explanations);
+
+    const keys = Object.keys(players);
+    for (let i = 0; i < keys.length; i++) {
+      const player = players[keys[i]];
+      for (let j = 0; j < 5; j++) {
+        player.hand[j] = explanations.pop();
+      }
+      console.log(player.hand);
+    }
+    io.sockets.in('sosig').emit('updatePlayers', players);
     if (outcomes.length !== 0) {
       const outcome = outcomes.pop();
       io.sockets.in('sosig').emit('newRound', outcome);
     }
-      for(let i = 0; i < players.length; i++){
-          let player = players[i];
-          for(let j = 0; j < 5; j++) {
-              player.hand.push = explanations.pop();
-          }
-      }
-      io.sockets.in('sosig').emit('updatePlayers', players);
   });
 
   // Timer update

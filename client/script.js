@@ -24,8 +24,9 @@ const createUser = (data) => {
 const gameStart = (data) => {
   if(users.length >= 3) {
       // show start button; if leader clicks it, hide button and begin game
-      // socket.emit('roundStart', data);
+      //socket.emit('roundStart');
   }
+    socket.emit('roundStart');
 };
 
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
@@ -58,9 +59,9 @@ const init = () => {
   ctx = canvas.getContext('2d');
   socket = io.connect();
   socket.on('joined', createUser);
-  socket.on('newRound', startRound);
-  socket.on('cardDrawn', cardDraw);
-  socket.on('timerUpdated', updateTime);
+  //socket.on('newRound', startRound);
+  //socket.on('cardDrawn', cardDraw);
+  //socket.on('timerUpdated', updateTime);
   socket.on('left', removeUser);
   //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
   console.log("hello");
