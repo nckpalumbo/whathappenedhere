@@ -105,6 +105,13 @@ io.on('connection', (sock) => {
       const outcome = outcomes.pop();
       io.sockets.in('sosig').emit('newRound', outcome);
     }
+      for(let i = 0; i < players.length; i++){
+          let player = players[i];
+          for(let j = 0; j < 5; j++) {
+              player.hand.push = explanations.pop();
+          }
+      }
+      io.sockets.in('sosig').emit('updatePlayers', players);
   });
 
   // Timer update
