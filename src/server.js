@@ -54,7 +54,7 @@ io.on('connection', (sock) => {
   const socket = sock;
 
   // New user joins the room
-  socket.join('shitfuck');
+  socket.join('sosig');
 
   // Assign the user a unique ID
   const userID = xxh.h32(`${socket.id}${new Date().getTime()}`, 0xDEADDEAD).toString(16);
@@ -86,7 +86,7 @@ io.on('connection', (sock) => {
   socket.on('roundStart', () => {
     if (outcomes.length !== 0) {
       const outcome = outcomes.pop();
-      io.sockets.in('shitfuck').emit('newRound', outcome);
+      io.sockets.in('sosig').emit('newRound', outcome);
     }
   });
     
@@ -101,19 +101,19 @@ io.on('connection', (sock) => {
     if (players[socket.userID].host) {
       // If so count down
       const time = data - 1;
-      io.sockets.in('shitfuck').emit('timerUpdated', time);
+      io.sockets.in('sosig').emit('timerUpdated', time);
     }
   });
 
   // Handle a user disconnecting
   socket.on('disconnect', () => {
     // Send the info of the user leaving to the clients
-    io.sockets.in('shitfuck').emit('left', players[socket.userID]);
+    io.sockets.in('sosig').emit('left', players[socket.userID]);
 
     // Remove the user from the list
     delete players[socket.userID];
 
     // Remove the socket that disconnected
-    socket.leave('shitfuck');
+    socket.leave('sosig');
   });
 });
