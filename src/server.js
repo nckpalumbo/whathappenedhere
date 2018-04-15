@@ -61,12 +61,27 @@ io.on('connection', (sock) => {
 
   // Create the new user using the unique ID and add to list
   players[userID] = new User(userID);
+  if (players.length === 1) {
+    players[userID].host = true;
+  }
 
   // Set the current socket's hash to the user's
   socket.userID = userID;
 
   // Send the information to the client
   socket.emit('joined', players[userID]);
+
+  // Shuffle the cards
+  const shuffle = (cards) => {
+    // from https://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array
+    const deck = cards;
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  };
+
 
   // Have the player draw a card
   socket.on('drawCard', () => {
@@ -84,16 +99,13 @@ io.on('connection', (sock) => {
 
   // Host starts a new round
   socket.on('roundStart', () => {
+    outcomes = shuffle(outcomes);
+    explanations = shuffle(explanations);
     if (outcomes.length !== 0) {
       const outcome = outcomes.pop();
       io.sockets.in('sosig').emit('newRound', outcome);
     }
   });
-    
-    // Shuffle the cards
-    socket.on('shuffle', () => {
-        
-    });
 
   // Timer update
   socket.on('timerUpdate', (data) => {
