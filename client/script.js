@@ -5,19 +5,25 @@ let hash;
 let isLeader = false;
 let playedCard = false;
 let hasVoted = false;
+let outcome;
 let score = 0;
-const users = {};
+let users = {};
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
 const createUser = (data) => {
-  hash = data.hash;
+  hash = data.userID;
   users[hash] = data;
   if(users.length === 1)
       isLeader = true;
   else
       isLeader = false;
   gameStart(data);
+};
+
+// Update the list of players
+const updatePlayers = (data) => {
+    users = data;
 };
 
 // game function -> prompts leader to start game if there are at least 3 players in room
@@ -36,6 +42,39 @@ const gameUpdate = (data) => {
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
     // socket.emit('drawCard', ()); after user plays card
 };
+
+// Draw the game
+const draw = () => {
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "lightblue";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw the outcome card
+    ctx.font = '28px sans-serif';
+    ctx.fillStyle = "lightgrey";
+    ctx.fillRect(canvas.width / 2 - 200, canvas.height / 3 - 50, 200, 300);
+    ctx.fillStyle = 'black';
+    ctx.fillText(outcome, canvas.width / 2 - 200, canvas.height / 3, 200);
+    ctx.fillText("Because", canvas.width / 2 + 50, canvas.height / 2, 200);
+    
+    // Draw the player's hand
+    ctx.font = '20px sans-serif';
+    for(let i = 0; i < users[hash].hand.length; i++) {
+        ctx.fillStyle = "lightgrey";
+        ctx.fillRect((10 + i*200), (canvas.height - (canvas.height / 5)), 150, 250);
+        ctx.fillStyle = 'black';
+        ctx.fillText(users[hash].hand[i].toString(), (10 + i*200), (canvas.height - (canvas.height / 6)), 150);
+    }
+    
+};
+
+// Start a new round
+const startRound = (data) => {
+    outcome = data;
+    draw();
+};
+
 // voting function -> reveals all cards and prompts players to vote; prompts server when vote is made or time runs out
 
 // results function -> reveals how many votes each card got, and gives corresponding player correct amount of points
@@ -59,7 +98,8 @@ const init = () => {
   ctx = canvas.getContext('2d');
   socket = io.connect();
   socket.on('joined', createUser);
-  //socket.on('newRound', startRound);
+  socket.on('newRound', startRound);
+    socket.on('updatePlayers', updatePlayers);
   //socket.on('cardDrawn', cardDraw);
   //socket.on('timerUpdated', updateTime);
   socket.on('left', removeUser);
