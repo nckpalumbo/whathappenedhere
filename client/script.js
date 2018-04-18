@@ -21,6 +21,17 @@ const createUser = (data) => {
   gameStart(data);
 };
 
+const cardStyle = {
+  outcomeWidth: 200,
+  outcomeHeight: 300,
+  explainWidth: 200,
+  explainHeight: 300,
+  outcomeFont: '28px sans-serif',
+  explainFont: '20px sans-serif',
+  cardColor: 'lightgrey',
+  textColor: 'black',
+};
+
 // Update the list of players
 const updatePlayers = (data) => {
     users = data;
@@ -51,19 +62,19 @@ const draw = () => {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw the outcome card
-    ctx.font = '28px sans-serif';
-    ctx.fillStyle = "lightgrey";
-    ctx.fillRect(canvas.width / 2 - 200, canvas.height / 3 - 50, 200, 300);
-    ctx.fillStyle = 'black';
+    ctx.font = cardStyle.outcomeFont;
+    ctx.fillStyle = cardStyle.cardColor;
+    ctx.fillRect(canvas.width / 2 - 200, canvas.height / 3 - 50, cardStyle.outcomeWidth, cardStyle.outcomeHeight);
+    ctx.fillStyle = cardStyle.textColor;
     ctx.fillText(outcome, canvas.width / 2 - 200, canvas.height / 3, 200);
-    ctx.fillText("Because", canvas.width / 2 + 50, canvas.height / 2, 200);
+    ctx.fillText("Because ", canvas.width / 2 + 50, canvas.height / 2, 200);
     
     // Draw the player's hand
-    ctx.font = '20px sans-serif';
+    ctx.font = cardStyle.explainFont;
     for(let i = 0; i < users[hash].hand.length; i++) {
-        ctx.fillStyle = "lightgrey";
-        ctx.fillRect((10 + i*200), (canvas.height - (canvas.height / 5)), 150, 250);
-        ctx.fillStyle = 'black';
+        ctx.fillStyle = cardStyle.cardColor;
+        ctx.fillRect((10 + i*200), (canvas.height - (canvas.height / 5)), cardStyle.explainWidth, cardStyle.explainHeight);
+        ctx.fillStyle = cardStyle.textColor;
         ctx.fillText(users[hash].hand[i].toString(), (10 + i*200), (canvas.height - (canvas.height / 6)), 150);
     }
     
