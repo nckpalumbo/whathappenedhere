@@ -8,6 +8,7 @@ let hasVoted = false;
 let outcome;
 let score = 0;
 let users = {};
+let voteCards = {};
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
@@ -66,7 +67,7 @@ const draw = () => {
     ctx.fillStyle = cardStyle.cardColor;
     ctx.fillRect(canvas.width / 2 - 200, canvas.height / 3 - 50, cardStyle.outcomeWidth, cardStyle.outcomeHeight);
     ctx.fillStyle = cardStyle.textColor;
-    ctx.fillText(outcome, canvas.width / 2 - 200, canvas.height / 3, 200);
+    ctx.fillText(outcome.text, canvas.width / 2 - 200, canvas.height / 3, 200);
     ctx.fillText("Because ", canvas.width / 2 + 50, canvas.height / 2, 200);
     
     // Draw the player's hand
@@ -75,9 +76,39 @@ const draw = () => {
         ctx.fillStyle = cardStyle.cardColor;
         ctx.fillRect((10 + i*200), (canvas.height - (canvas.height / 5)), cardStyle.explainWidth, cardStyle.explainHeight);
         ctx.fillStyle = cardStyle.textColor;
-        ctx.fillText(users[hash].hand[i].toString(), (10 + i*200), (canvas.height - (canvas.height / 6)), 150);
+        ctx.fillText(users[hash].hand[i].text.toString(), (10 + i*200), (canvas.height - (canvas.height / 6)), 150);
     }
     
+};
+
+// Update the explanations that have been submitted
+const updateVoteCards = (data) => {
+    voteCards = data;
+};
+
+// Handle when the player clicks the mouse
+const mouseDownHandle = (e) => {
+    let hand = users[hash].hand;
+    for(let i = 0; i < hand.length; i++) {
+        if(e.clientX < (hand[i].x + hand[i].width) && 
+            e.clientX > hand[i].x &&
+            e.clientY < (hand[i].y + hand[i].height) &&
+            e.clientY > hand[i].y) {
+            hand[i].clicked = true;
+            break;
+        }
+    }
+};
+
+// Handle when the player releases the mouse
+const mouseUpHandle = (e) => {
+    let hand = users[hash].hand;
+    for(let i = 0; i < hand.length; i++) {
+        if(hand[i].clicked) {
+            socket.emit("cardPicked", hand[i]);
+            hand.remove(i);
+        }
+    }
 };
 
 // Start a new round
@@ -111,10 +142,13 @@ const init = () => {
   socket.on('joined', createUser);
   socket.on('newRound', startRound);
     socket.on('updatePlayers', updatePlayers);
+    socket.on('voteCardUpdated', updateVoteCards);
   //socket.on('cardDrawn', cardDraw);
   //socket.on('timerUpdated', updateTime);
   socket.on('left', removeUser);
   //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
+    document.body.addEventListener('onmousedown', mouseDownHandler);
+    document.body.addEventListener('onmouseUp', mouseUpHandler);
   console.log("hello");
 };
 

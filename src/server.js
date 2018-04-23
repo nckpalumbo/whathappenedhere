@@ -4,6 +4,7 @@ const express = require('express');
 const socketio = require('socket.io');
 const xxh = require('xxhashjs');
 const User = require('./User.js');
+const Card = require('./Card.js');
 const fs = require('fs');
 
 const PORT = process.env.PORT || process.env.NODE_PORT || 3000;
@@ -33,6 +34,7 @@ const players = {};
 // Create a list of outcomes and explanations
 let outcomes = [];
 let explanations = [];
+const voteCards = {};
 // Read in the card data
 fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
   if (err) throw err;
@@ -84,7 +86,7 @@ io.on('connection', (sock) => {
     // Czech if the player's hand is full
     if (player.hand.length > 5) {
       // If not, give them a card
-      const explanation = explanations.pop();
+      const explanation = new Card(explanations.pop(), 0, 0, 150, 200);
       player.hand.push(explanation);
       // Update the client with the new information
       socket.emit('cardDrawn', player);
@@ -106,7 +108,7 @@ io.on('connection', (sock) => {
     }
     io.sockets.in('sosig').emit('updatePlayers', players);
     if (outcomes.length !== 0) {
-      const outcome = outcomes.pop();
+      const outcome = new Card(outcomes.pop(), 450, 20, 300, 200);
       io.sockets.in('sosig').emit('newRound', outcome);
     }
   });
@@ -120,6 +122,12 @@ io.on('connection', (sock) => {
       io.sockets.in('sosig').emit('timerUpdated', time);
     }
   });
+    
+    // Handle when a user clicks the explanation for the current outcome
+    socket.on('cardPicked', (data) => {
+        voteCards[data.text] = data;
+        io.sockets.in('sosig').emit('voteCardsUpdated', voteCards);
+    });
 
   // Handle a user disconnecting
   socket.on('disconnect', () => {
