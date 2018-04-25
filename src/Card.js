@@ -7,6 +7,7 @@ class Card {
     this.width = width;
     this.height = height;
     this.clicked = false;
+    this.votes = 0;
   }
 }
 

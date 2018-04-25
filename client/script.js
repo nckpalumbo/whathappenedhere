@@ -119,6 +119,17 @@ const mouseDownHandle = (e) => {
             break;
         }
     }
+    
+    const voteKeys = Object.keys(voteCards);
+    for(let i = 0; i < voteKeys.length; i++) {
+        if(mouse.x < (voteCards[voteKeys[i]].x + voteCards[voteKeys[i]].width) && 
+            mouse.x > voteCards[voteKeys[i]].x &&
+            mouse.y < (voteCards[voteKeys[i]].y + voteCards[voteKeys[i]].height) &&
+            mouse.y > voteCards[voteKeys[i]].y) {
+            voteCards[voteKeys[i]].votes++;
+            break;
+        }
+    }
 };
 
 // Handle when the player releases the mouse

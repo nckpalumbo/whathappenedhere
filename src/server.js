@@ -103,7 +103,7 @@ io.on('connection', (sock) => {
     for (let i = 0; i < keys.length; i++) {
       const player = players[keys[i]];
       for (let j = 0; j < 5; j++) {
-        player.hand[j] = new Card(explanations.pop(), 10 + j*200, 568, 150, 200);
+        player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 200);
       }
       // console.log(player.hand);
     }

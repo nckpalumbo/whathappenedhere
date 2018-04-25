@@ -1,25 +1,27 @@
-let canvas;
-let ctx;
-let socket;
-let hash;
-let isLeader = false;
-let playedCard = false;
-let hasVoted = false;
-let outcome;
-let score = 0;
-let users = {};
-let voteCards = {};
+'use strict';
+
+var canvas = void 0;
+var ctx = void 0;
+var socket = void 0;
+var hash = void 0;
+var isLeader = false;
+var playedCard = false;
+var hasVoted = false;
+var outcome = void 0;
+var score = 0;
+var users = {};
+var voteCards = {};
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
-const createUser = data => {
+var createUser = function createUser(data) {
     hash = data.userID;
     users[hash] = data;
     if (users.length === 1) isLeader = true;else isLeader = false;
     gameStart(data);
 };
 
-const cardStyle = {
+var cardStyle = {
     outcomeWidth: 300,
     outcomeHeight: 200,
     explainWidth: 150,
@@ -31,12 +33,12 @@ const cardStyle = {
 };
 
 // Update the list of players
-const updatePlayers = data => {
+var updatePlayers = function updatePlayers(data) {
     users = data;
 };
 
 // game function -> prompts leader to start game if there are at least 3 players in room
-const gameStart = data => {
+var gameStart = function gameStart(data) {
     if (users.length >= 3) {
         // show start button; if leader clicks it, hide button and begin game
         //socket.emit('roundStart');
@@ -45,7 +47,7 @@ const gameStart = data => {
 };
 
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
-const gameUpdate = data => {
+var gameUpdate = function gameUpdate(data) {
     // starts timer at 60 seconds and counts down
     // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
@@ -53,7 +55,7 @@ const gameUpdate = data => {
 };
 
 // Draw the game
-const draw = () => {
+var draw = function draw() {
     // Clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "lightblue";
@@ -69,8 +71,8 @@ const draw = () => {
 
     // Draw the player's hand
     ctx.font = cardStyle.explainFont;
-    for (let i = 0; i < users[hash].hand.length; i++) {
-        const card = users[hash].hand[i];
+    for (var i = 0; i < users[hash].hand.length; i++) {
+        var card = users[hash].hand[i];
         ctx.fillStyle = cardStyle.cardColor;
         ctx.fillRect(card.x, card.y, card.width, card.height);
         ctx.fillStyle = cardStyle.textColor;
@@ -79,45 +81,53 @@ const draw = () => {
 
     // Draw the cards that are being voted on
     ctx.font = cardStyle.explainFont;
-    const voteKeys = Object.keys(voteCards);
-    for (let i = 0; i < voteKeys.length; i++) {
+    var voteKeys = Object.keys(voteCards);
+    for (var _i = 0; _i < voteKeys.length; _i++) {
         ctx.fillStyle = cardStyle.cardColor;
-        ctx.fillRect(10 + i * 200, canvas.height / 3, cardStyle.explainWidth, cardStyle.explainHeight);
+        ctx.fillRect(10 + _i * 200, canvas.height / 3, cardStyle.explainWidth, cardStyle.explainHeight);
         ctx.fillStyle = cardStyle.textColor;
-        ctx.fillText(voteCards[voteKeys[i]].text, 10 + i * 200, canvas.height / 3 + 30, 150);
+        ctx.fillText(voteCards[voteKeys[_i]].text, 10 + _i * 200, canvas.height / 3 + 30, 150);
     }
 };
 
 // Update the explanations that have been submitted
-const updateVoteCards = data => {
+var updateVoteCards = function updateVoteCards(data) {
     voteCards = data;
     draw();
 };
 
 // Get the mouse
-const getMouse = e => {
-    let mouse = {};
+var getMouse = function getMouse(e) {
+    var mouse = {};
     mouse.x = e.pageX - e.target.offsetLeft;
     mouse.y = e.pageY - e.target.offsetTop;
     return mouse;
 };
 
 // Handle when the player clicks the mouse
-const mouseDownHandle = e => {
-    let hand = users[hash].hand;
-    const mouse = getMouse(e);
-    for (let i = 0; i < hand.length; i++) {
+var mouseDownHandle = function mouseDownHandle(e) {
+    var hand = users[hash].hand;
+    var mouse = getMouse(e);
+    for (var i = 0; i < hand.length; i++) {
         if (mouse.x < hand[i].x + hand[i].width && mouse.x > hand[i].x && mouse.y < hand[i].y + hand[i].height && mouse.y > hand[i].y) {
             hand[i].clicked = true;
+            break;
+        }
+    }
+
+    var voteKeys = Object.keys(voteCards);
+    for (var _i2 = 0; _i2 < voteKeys.length; _i2++) {
+        if (mouse.x < voteCards[voteKeys[_i2]].x + voteCards[voteKeys[_i2]].width && mouse.x > voteCards[voteKeys[_i2]].x && mouse.y < voteCards[voteKeys[_i2]].y + voteCards[voteKeys[_i2]].height && mouse.y > voteCards[voteKeys[_i2]].y) {
+            voteCards[voteKeys[_i2]].votes++;
             break;
         }
     }
 };
 
 // Handle when the player releases the mouse
-const mouseUpHandle = e => {
-    let hand = users[hash].hand;
-    for (let i = 0; i < hand.length; i++) {
+var mouseUpHandle = function mouseUpHandle(e) {
+    var hand = users[hash].hand;
+    for (var i = 0; i < hand.length; i++) {
         if (hand[i].clicked) {
             socket.emit("cardPicked", hand[i]);
             //hand.splice(i);
@@ -127,7 +137,7 @@ const mouseUpHandle = e => {
 };
 
 // Start a new round
-const startRound = data => {
+var startRound = function startRound(data) {
     outcome = data;
     draw();
 };
@@ -141,16 +151,18 @@ const startRound = data => {
 // in app purchases function -> let's players "buy" packs for $$ or in-game currency (points); probably just make all free for game
 
 // delete user function -> if they leave room, erase their data
-const removeUser = data => {
+var removeUser = function removeUser(data) {
     if (users[data]) {
         delete users[data];
     }
 };
 
 // random num const
-const randomNum = r => Math.floor(Math.random() * r);
+var randomNum = function randomNum(r) {
+    return Math.floor(Math.random() * r);
+};
 
-const init = () => {
+var init = function init() {
     canvas = document.querySelector('#canvas');
     ctx = canvas.getContext('2d');
     socket = io.connect();
