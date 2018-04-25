@@ -11,6 +11,10 @@ var outcome = void 0;
 var score = 0;
 var users = {};
 var voteCards = {};
+var outcomeBack = void 0;
+var explainBack = void 0;
+var emptyHorizontal = void 0;
+var emptyVertical = void 0;
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
@@ -64,10 +68,12 @@ var draw = function draw() {
     // Draw the outcome card
     ctx.font = cardStyle.outcomeFont;
     ctx.fillStyle = cardStyle.cardColor;
-    ctx.fillRect(outcome.x, outcome.y, cardStyle.outcomeWidth, cardStyle.outcomeHeight);
+    //ctx.fillRect(outcome.x, outcome.y, cardStyle.outcomeWidth, cardStyle.outcomeHeight);
+    ctx.drawImage(outcomeBack, outcome.x - 225, outcome.y);
+    ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
     ctx.fillStyle = cardStyle.textColor;
-    ctx.fillText(outcome.text, outcome.x, outcome.y + 50, 200);
-    ctx.fillText("Because ", canvas.width / 2, canvas.height / 3, 200);
+    ctx.fillText(outcome.text, outcome.x + 110, outcome.y + 50, 200);
+    ctx.fillText("Because ", canvas.width / 2 - 50, canvas.height / 3 - 50, 200);
 
     // Draw the player's hand
     ctx.font = cardStyle.explainFont;
@@ -176,6 +182,11 @@ var init = function init() {
     //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
     canvas.onmousedown = mouseDownHandle;
     canvas.onmouseup = mouseUpHandle;
+
+    outcomeBack = document.querySelector("#outcBack");
+    explainBack = document.querySelector("#explBack");
+    emptyHorizontal = document.querySelector("#emptyHor");
+    emptyVertical = document.querySelector("#emptyVer");
 };
 
 window.onload = init;
