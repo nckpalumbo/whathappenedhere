@@ -87,7 +87,8 @@ io.on('connection', (sock) => {
     if (player.hand.length > 5) {
       // If not, give them a card
       const explanation = new Card(explanations.pop(), 0, 0, 150, 200);
-      player.hand.push(explanation);
+      // console.log(explanation);
+      player.hand.unshift(explanation);
       // Update the client with the new information
       socket.emit('cardDrawn', player);
     }
@@ -102,13 +103,13 @@ io.on('connection', (sock) => {
     for (let i = 0; i < keys.length; i++) {
       const player = players[keys[i]];
       for (let j = 0; j < 5; j++) {
-        player.hand[j] = explanations.pop();
+        player.hand[j] = new Card(explanations.pop(), 10 + j*200, 568, 150, 200);
       }
-      console.log(player.hand);
+      // console.log(player.hand);
     }
     io.sockets.in('sosig').emit('updatePlayers', players);
     if (outcomes.length !== 0) {
-      const outcome = new Card(outcomes.pop(), 450, 20, 300, 200);
+      const outcome = new Card(outcomes.pop(), 450, 10, 200, 300);
       io.sockets.in('sosig').emit('newRound', outcome);
     }
   });
@@ -122,12 +123,12 @@ io.on('connection', (sock) => {
       io.sockets.in('sosig').emit('timerUpdated', time);
     }
   });
-    
-    // Handle when a user clicks the explanation for the current outcome
-    socket.on('cardPicked', (data) => {
-        voteCards[data.text] = data;
-        io.sockets.in('sosig').emit('voteCardsUpdated', voteCards);
-    });
+
+  // Handle when a user clicks the explanation for the current outcome
+  socket.on('cardPicked', (data) => {
+    voteCards[data.text] = data;
+    io.sockets.in('sosig').emit('voteCardsUpdated', voteCards);
+  });
 
   // Handle a user disconnecting
   socket.on('disconnect', () => {
