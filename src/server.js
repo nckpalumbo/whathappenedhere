@@ -101,7 +101,7 @@ io.on('connection', (sock) => {
     // Czech if the player's hand is full
     if (player.hand.length > 5) {
       // If not, give them a card
-      const explanation = new Card(explanations.pop(), 0, 0, 150, 200);
+      const explanation = new Card(explanations.pop(), 0, 0, 150, 250);
       // console.log(explanation);
       player.hand.unshift(explanation);
       // Update the client with the new information
@@ -118,7 +118,7 @@ io.on('connection', (sock) => {
     for (let i = 0; i < keys.length; i++) {
       const player = players[keys[i]];
       for (let j = 0; j < 5; j++) {
-        player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 200);
+        player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 250);
       }
       // console.log(player.hand);
     }

@@ -86,7 +86,7 @@ const draw = () => {
     ctx.fillStyle = "lightblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    let outcomeMaxWidth = 250;
+    let outcomeMaxWidth = 230;
     let explainMaxWidth = 135;
     let lineHeight = 30;
     
@@ -96,7 +96,7 @@ const draw = () => {
     ctx.fillStyle = cardStyle.textColor;
     ctx.drawImage(outcomeBack, outcome.x - 225, outcome.y);
     ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
-    displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 50, outcomeMaxWidth, lineHeight)
+    displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 45, outcomeMaxWidth, lineHeight)
     ctx.font = ("32px Helvetica");
     ctx.fillText("Because ", (canvas.width / 2) - 60, (canvas.height / 3) - 50, 200);
     
@@ -141,13 +141,15 @@ const getMouse = (e) => {
 const mouseDownHandle = (e) => {
     let hand = users[hash].hand;
     const mouse = getMouse(e);
-    for(let i = 0; i < hand.length; i++) {
-        if(mouse.x < (hand[i].x + hand[i].width) && 
-            mouse.x > hand[i].x &&
-            mouse.y < (hand[i].y + hand[i].height) &&
-            mouse.y > hand[i].y) {
-            hand[i].clicked = true;
-            break;
+    if(!playedCard){
+        for(let i = 0; i < hand.length; i++) {
+            if(mouse.x < ((hand[i].x + 30) + hand[i].width) && 
+                mouse.x > (hand[i].x + 30) &&
+                mouse.y < ((hand[i].y - 60) + hand[i].height) &&
+                mouse.y > (hand[i].y - 60)) {
+                hand[i].clicked = true;
+                break;
+            }
         }
     }
     
@@ -169,6 +171,7 @@ const mouseUpHandle = (e) => {
     const mouse = getMouse(e);
     for(let i = 0; i < hand.length; i++) {
         if(hand[i].clicked) {
+            playedCard = true;
             socket.emit("cardPicked", hand[i]);
             //hand.splice(i);
             break;
@@ -205,7 +208,7 @@ const init = () => {
   ctx = canvas.getContext('2d');
   const connect = document.querySelector("#connect");         
   connect.addEventListener('click', connectSocket);
-  //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
+  //event listeners for onmousedown(start button), onmousedown(card),
   canvas.onmousedown = mouseDownHandle;
   canvas.onmouseup = mouseUpHandle;
     

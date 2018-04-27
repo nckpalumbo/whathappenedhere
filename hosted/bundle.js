@@ -84,7 +84,7 @@ var draw = function draw() {
     ctx.fillStyle = "lightblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    var outcomeMaxWidth = 250;
+    var outcomeMaxWidth = 230;
     var explainMaxWidth = 135;
     var lineHeight = 30;
 
@@ -94,7 +94,7 @@ var draw = function draw() {
     ctx.fillStyle = cardStyle.textColor;
     ctx.drawImage(outcomeBack, outcome.x - 225, outcome.y);
     ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
-    displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 50, outcomeMaxWidth, lineHeight);
+    displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 45, outcomeMaxWidth, lineHeight);
     ctx.font = "32px Helvetica";
     ctx.fillText("Because ", canvas.width / 2 - 60, canvas.height / 3 - 50, 200);
 
@@ -138,10 +138,12 @@ var getMouse = function getMouse(e) {
 var mouseDownHandle = function mouseDownHandle(e) {
     var hand = users[hash].hand;
     var mouse = getMouse(e);
-    for (var i = 0; i < hand.length; i++) {
-        if (mouse.x < hand[i].x + hand[i].width && mouse.x > hand[i].x && mouse.y < hand[i].y + hand[i].height && mouse.y > hand[i].y) {
-            hand[i].clicked = true;
-            break;
+    if (!playedCard) {
+        for (var i = 0; i < hand.length; i++) {
+            if (mouse.x < hand[i].x + 30 + hand[i].width && mouse.x > hand[i].x + 30 && mouse.y < hand[i].y - 60 + hand[i].height && mouse.y > hand[i].y - 60) {
+                hand[i].clicked = true;
+                break;
+            }
         }
     }
 
@@ -160,6 +162,7 @@ var mouseUpHandle = function mouseUpHandle(e) {
     var mouse = getMouse(e);
     for (var i = 0; i < hand.length; i++) {
         if (hand[i].clicked) {
+            playedCard = true;
             socket.emit("cardPicked", hand[i]);
             //hand.splice(i);
             break;
@@ -167,6 +170,19 @@ var mouseUpHandle = function mouseUpHandle(e) {
     }
 };
 
+var mouseOutHandle = function mouseOutHandle(e) {
+    var hand = users[hash].hand;
+    var mouse = getMouse(e);
+    if (!playedCard) {
+        for (var i = 0; i < hand.length; i++) {
+            if (mouse.x < hand[i].x + 30 + hand[i].width && mouse.x > hand[i].x + 30 && mouse.y < hand[i].y - 60 + hand[i].height && mouse.y > hand[i].y - 60) {
+                console.log("hello");
+                document.querySelector('canvas').style.cursor = "pointer";
+                break;
+            }
+        }
+    }
+};
 // Start a new round
 var startRound = function startRound(data) {
     outcome = data;
@@ -198,9 +214,10 @@ var init = function init() {
     ctx = canvas.getContext('2d');
     var connect = document.querySelector("#connect");
     connect.addEventListener('click', connectSocket);
-    //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
+    //event listeners for onmousedown(start button), onmousedown(card),
     canvas.onmousedown = mouseDownHandle;
     canvas.onmouseup = mouseUpHandle;
+    canvas.onmouseout = mouseOutHandle;
 
     outcomeBack = document.querySelector("#outcBack");
     explainBack = document.querySelector("#explBack");
