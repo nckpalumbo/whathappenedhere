@@ -31,10 +31,30 @@ const cardStyle = {
   outcomeHeight: 200,
   explainWidth: 150,
   explainHeight: 250,
-  outcomeFont: '28px sans-serif',
-  explainFont: '20px sans-serif',
+  outcomeFont: '28px Papyrus',
+  explainFont: '24px Papyrus',
   cardColor: 'lightgrey',
   textColor: 'black',
+};
+
+const displayWrappedText = (context, text, x, y, maxWidth, lineHeight) => {
+  var words = text.split(' ');
+  var line = '';
+    
+  for(let i = 0; i < words.length; i++){
+    var testLine = line + words[i] + ' ';
+    var measures = context.measureText(testLine);
+    var testWidth = measures.width;
+    if(testWidth > maxWidth && i > 0){
+      context.fillText(line, x, y);
+      line = words[i] + ' ';
+      y += lineHeight;
+    }
+    else{
+      line = testLine;
+    }
+  }
+  context.fillText(line, x, y);
 };
 
 // Update the list of players
@@ -66,24 +86,29 @@ const draw = () => {
     ctx.fillStyle = "lightblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    let outcomeMaxWidth = 250;
+    let explainMaxWidth = 135;
+    let lineHeight = 30;
+    
     // Draw the outcome card
     ctx.font = cardStyle.outcomeFont;
     ctx.fillStyle = cardStyle.cardColor;
-    //ctx.fillRect(outcome.x, outcome.y, cardStyle.outcomeWidth, cardStyle.outcomeHeight);
+    ctx.fillStyle = cardStyle.textColor;
     ctx.drawImage(outcomeBack, outcome.x - 225, outcome.y);
     ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
-    ctx.fillStyle = cardStyle.textColor;
-    ctx.fillText(outcome.text, outcome.x + 110, outcome.y + 50, 200);
-    ctx.fillText("Because ", (canvas.width / 2) - 50, (canvas.height / 3) - 50, 200);
+    displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 50, outcomeMaxWidth, lineHeight)
+    ctx.font = ("32px Helvetica");
+    ctx.fillText("Because ", (canvas.width / 2) - 60, (canvas.height / 3) - 50, 200);
     
     // Draw the player's hand
     ctx.font = cardStyle.explainFont;
     for(let i = 0; i < users[hash].hand.length; i++) {
         const card = users[hash].hand[i];
+        ctx.drawImage(emptyVertical, card.x + 30, card.y - 60);
+        ctx.font = cardStyle.explainFont;
         ctx.fillStyle = cardStyle.cardColor;
-        ctx.fillRect(card.x, card.y, card.width, card.height);
         ctx.fillStyle = cardStyle.textColor;
-        ctx.fillText(card.text, card.x, card.y + 20, 150);
+        displayWrappedText(ctx, card.text, card.x + 40, card.y - 15, explainMaxWidth, lineHeight + 5)
     }
     
     // Draw the cards that are being voted on
@@ -91,7 +116,7 @@ const draw = () => {
     const voteKeys = Object.keys(voteCards);
     for(let i = 0; i < voteKeys.length; i++) {
         ctx.fillStyle = cardStyle.cardColor;
-        ctx.fillRect((10 + i*200), (canvas.height / 3), cardStyle.explainWidth, cardStyle.explainHeight);
+        ctx.fillRect((50 + i*200), (canvas.height / 3), cardStyle.explainWidth, cardStyle.explainHeight);
         ctx.fillStyle = cardStyle.textColor;
         ctx.fillText(voteCards[voteKeys[i]].text, (10 + i*200), (canvas.height / 3) + 30, 150);
     }

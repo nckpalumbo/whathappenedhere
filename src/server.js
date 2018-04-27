@@ -60,7 +60,7 @@ io.on('connection', (sock) => {
   });
   socket.on('join', (data) => {
     // message back to new user
-    
+
     socket.name = data.name;
     socket.roomNum = data.room;
     socket.join(socket.roomNum);

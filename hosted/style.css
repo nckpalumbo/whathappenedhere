@@ -12,7 +12,7 @@ body {
 
 #canvas {
     background-color: lightblue;
-    border: 2px solid black;
+    border: 5px solid black;
     height: 60%;
     width: 60%;
     display: none;
