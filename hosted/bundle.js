@@ -106,7 +106,7 @@ var draw = function draw() {
         ctx.font = cardStyle.explainFont;
         ctx.fillStyle = cardStyle.cardColor;
         ctx.fillStyle = cardStyle.textColor;
-        displayWrappedText(ctx, card.text, card.x + 40, card.y + 35, explainMaxWidth, lineHeight);
+        displayWrappedText(ctx, card.text, card.x + 40, card.y - 15, explainMaxWidth, lineHeight + 5);
     }
 
     // Draw the cards that are being voted on
