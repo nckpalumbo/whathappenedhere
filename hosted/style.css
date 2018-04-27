@@ -13,12 +13,47 @@ body {
 #canvas {
     background-color: lightblue;
     border: 2px solid black;
-    height: 65%;
-    width: 65%;
-    display: block;
+    height: 60%;
+    width: 60%;
+    display: none;
     margin: 0 auto;
 }
 
 #hidden {
     display:none;
+}
+
+#startRoom {
+        color: black;
+        background-color: white;
+        width: 400px;
+        text-align: center;
+        border: 1px solid black;
+        height: 200px;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: auto;
+}
+#startRoom label {
+    position: relative;
+    font-size: 30px;
+    top: 28px;
+}
+#startRoom input {
+    height: 30px;
+    position: relative;
+    top: 25px;
+}
+#startRoom input[type="text"] {
+    font-size: 18px;
+}
+#connect {
+    width: 200px;
+    font-size: 20px;
+}
+#connect:hover{
+    cursor: pointer;
 }

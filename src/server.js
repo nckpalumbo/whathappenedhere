@@ -48,24 +48,40 @@ fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
 // Handle a connection to the server
 io.on('connection', (sock) => {
   const socket = sock;
+  socket.on('searchRoom', (data) => {
+    const keys = Object.keys(players);
+    for (let i = 0; i < keys.length; i++) {
+      if (players[keys[i]].name === data.name) {
+        socket.emit('nameTaken', { msg: 'Sorry, this username exists in this room already.' });
+      }
+    }
+    // if player with username not in room and if game in room not started, let player join
+    socket.emit('letJoin', { name: data.name, roomNum: data.room });
+  });
+  socket.on('join', (data) => {
+    // message back to new user
+    
+    socket.name = data.name;
+    socket.roomNum = data.room;
+    socket.join(socket.roomNum);
 
-  // New user joins the room
-  socket.join('sosig');
+    // Assign the user a unique ID
+    const userID = xxh.h32(`${socket.id}${new Date().getTime()}`, 0xDEADDEAD).toString(16);
 
-  // Assign the user a unique ID
-  const userID = xxh.h32(`${socket.id}${new Date().getTime()}`, 0xDEADDEAD).toString(16);
+    // Create the new user using the unique ID and add to list
+    players[userID] = new User(userID, data.name, data.roomNum);
+    if (players.length === 1) {
+      players[userID].host = true;
+    }
 
-  // Create the new user using the unique ID and add to list
-  players[userID] = new User(userID);
-  if (players.length === 1) {
-    players[userID].host = true;
-  }
+    // Set the current socket's hash to the user's
+    socket.userID = userID;
 
-  // Set the current socket's hash to the user's
-  socket.userID = userID;
-
-  // Send the information to the client
-  socket.emit('joined', players[userID]);
+    // Send the information to the client
+    socket.emit('joined', players[userID]);
+    console.log(socket.name);
+    console.log(socket.roomNum);
+  });
 
   // Shuffle the cards
   const shuffle = (cards) => {
@@ -77,7 +93,6 @@ io.on('connection', (sock) => {
     }
     return deck;
   };
-
 
   // Have the player draw a card
   socket.on('drawCard', () => {
@@ -107,10 +122,10 @@ io.on('connection', (sock) => {
       }
       // console.log(player.hand);
     }
-    io.sockets.in('sosig').emit('updatePlayers', players);
+    io.sockets.in(socket.roomNum).emit('updatePlayers', players);
     if (outcomes.length !== 0) {
       const outcome = new Card(outcomes.pop(), 450, 10, 200, 300);
-      io.sockets.in('sosig').emit('newRound', outcome);
+      io.sockets.in(socket.roomNum).emit('newRound', outcome);
     }
   });
 
@@ -120,25 +135,25 @@ io.on('connection', (sock) => {
     if (players[socket.userID].host) {
       // If so count down
       const time = data - 1;
-      io.sockets.in('sosig').emit('timerUpdated', time);
+      io.sockets.in(socket.roomNum).emit('timerUpdated', time);
     }
   });
 
   // Handle when a user clicks the explanation for the current outcome
   socket.on('cardPicked', (data) => {
     voteCards[data.text] = data;
-    io.sockets.in('sosig').emit('voteCardsUpdated', voteCards);
+    io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards);
   });
 
   // Handle a user disconnecting
   socket.on('disconnect', () => {
     // Send the info of the user leaving to the clients
-    io.sockets.in('sosig').emit('left', players[socket.userID]);
+    io.sockets.in(socket.roomNum).emit('left', players[socket.userID]);
 
     // Remove the user from the list
     delete players[socket.userID];
 
     // Remove the socket that disconnected
-    socket.leave('sosig');
+    socket.leave(socket.roomNum);
   });
 });

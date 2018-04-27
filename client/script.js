@@ -141,6 +141,7 @@ const mouseDownHandle = (e) => {
 // Handle when the player releases the mouse
 const mouseUpHandle = (e) => {
     let hand = users[hash].hand;
+    const mouse = getMouse(e);
     for(let i = 0; i < hand.length; i++) {
         if(hand[i].clicked) {
             socket.emit("cardPicked", hand[i]);
@@ -177,22 +178,51 @@ const randomNum = r => Math.floor(Math.random() * r);
 const init = () => {
   canvas = document.querySelector('#canvas');
   ctx = canvas.getContext('2d');
-  socket = io.connect();
-  socket.on('joined', createUser);
-  socket.on('newRound', startRound);
-    socket.on('updatePlayers', updatePlayers);
-    socket.on('voteCardsUpdated', updateVoteCards);
-  //socket.on('cardDrawn', cardDraw);
-  //socket.on('timerUpdated', updateTime);
-  socket.on('left', removeUser);
+  const connect = document.querySelector("#connect");         
+  connect.addEventListener('click', connectSocket);
   //event listeners for onmousedown(start button), onmousedown(card), onmouseover(card)
-    canvas.onmousedown = mouseDownHandle;
-    canvas.onmouseup = mouseUpHandle;
+  canvas.onmousedown = mouseDownHandle;
+  canvas.onmouseup = mouseUpHandle;
     
   outcomeBack = document.querySelector("#outcBack");
   explainBack = document.querySelector("#explBack");
   emptyHorizontal = document.querySelector("#emptyHor");
   emptyVertical = document.querySelector("#emptyVer");
+};
+
+const connectSocket = () => {
+  socket = io.connect();
+  let user = document.querySelector("#username").value;
+  let roomNum = document.querySelector("#roomNum").value;
+  console.log(user + " " + roomNum);
+  socket.on('connect', () => {
+      if(!user) {
+          user = 'unknown';   
+      }
+      socket.emit('searchRoom', {name: user, room: roomNum});
+  });
+
+  socket.on('letJoin', (data) => {
+      socket.emit('join', { name: data.name, room: data.roomNum }); 
+      document.querySelector('#connect').style.display = "none";
+      document.querySelector('#startRoom').style.display = "none";
+      document.querySelector('#canvas').style.display = "block";
+      //document.querySelector('#webChat').style.display = "block";
+  });
+
+  socket.on('nameTaken', (data) => {
+      window.alert(data.msg);
+      user.value = "";
+      roomNum.value = "";
+      socket.disconnect();
+  });
+  socket.on('joined', createUser);
+  socket.on('newRound', startRound);
+  socket.on('updatePlayers', updatePlayers);
+  socket.on('voteCardsUpdated', updateVoteCards);
+  //socket.on('cardDrawn', cardDraw);
+  //socket.on('timerUpdated', updateTime);
+  socket.on('left', removeUser);
 };
 
 window.onload = init;
