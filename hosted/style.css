@@ -55,3 +55,14 @@ body {
 #connect:hover{
     cursor: pointer;
 }
+#start {
+    width: 400px;
+    font-size: 40px;
+    position: absolute;
+    top: 46%;
+    left: 40%;
+    display: none;
+}
+#start:hover{
+    cursor: pointer;
+}

@@ -9,20 +9,23 @@ var playedCard = false;
 var hasVoted = false;
 var outcome = void 0;
 var score = 0;
+var timer = 0;
 var users = {};
 var voteCards = {};
 var outcomeBack = void 0;
 var explainBack = void 0;
 var emptyHorizontal = void 0;
 var emptyVertical = void 0;
+var length = void 0;
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
 var createUser = function createUser(data) {
-    hash = data.userID;
-    users[hash] = data;
-    if (users.length === 1) isLeader = true;else isLeader = false;
+    hash = data.id;
+    users[hash] = data.user;
+    if (data.length === 1) isLeader = true;else isLeader = false;
     gameStart(data);
+    console.log(isLeader);
 };
 
 var cardStyle = {
@@ -57,21 +60,40 @@ var displayWrappedText = function displayWrappedText(context, text, x, y, maxWid
 
 // Update the list of players
 var updatePlayers = function updatePlayers(data) {
-    users = data;
+    users = data.room;
+    length = data.length;
+    console.log(length);
+};
+
+// Update the timer
+var updateTime = function updateTime(data) {
+    timer = data;
 };
 
 // game function -> prompts leader to start game if there are at least 3 players in room
 var gameStart = function gameStart(data) {
-    if (users.length >= 3) {
-        // show start button; if leader clicks it, hide button and begin game
-        //socket.emit('roundStart');
-    }
-    socket.emit('roundStart');
+    var start = document.querySelector('#start');
+    start.addEventListener('click', function () {
+        if (length >= 3 && isLeader) {
+            timer = 60;
+            socket.emit('roundStart');
+        } else if (length < 3 && isLeader) {
+            console.log("not enough people");
+        }
+    });
 };
 
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
-var gameUpdate = function gameUpdate(data) {
+var gameUpdate = function gameUpdate() {
+    console.log('called');
     // starts timer at 60 seconds and counts down
+    socket.emit('timerUpdate', timer);
+    //ctx.clearRect(944, 0, 80, 80);
+    ctx.fillStyle = "lightblue";
+    ctx.fillRect(944, 0, 80, 80);
+    ctx.font = "32px Helvetica";
+    ctx.fillStyle = cardStyle.textColor;
+    if (timer > 0) ctx.fillText(timer, 950, 30);else ctx.fillText('0', 950, 30);
     // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
     // socket.emit('drawCard', ()); after user plays card
@@ -96,7 +118,7 @@ var draw = function draw() {
     ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
     displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 45, outcomeMaxWidth, lineHeight);
     ctx.font = "32px Helvetica";
-    ctx.fillText("Because ", canvas.width / 2 - 60, canvas.height / 3 - 50, 200);
+    ctx.fillText("Because... ", canvas.width / 2 - 60, canvas.height / 3 - 50, 200);
 
     // Draw the player's hand
     ctx.font = cardStyle.explainFont;
@@ -113,10 +135,10 @@ var draw = function draw() {
     ctx.font = cardStyle.explainFont;
     var voteKeys = Object.keys(voteCards);
     for (var _i = 0; _i < voteKeys.length; _i++) {
+        ctx.drawImage(emptyVertical, 40 + _i * 200, 250);
         ctx.fillStyle = cardStyle.cardColor;
-        ctx.fillRect(50 + _i * 200, canvas.height / 3, cardStyle.explainWidth, cardStyle.explainHeight);
         ctx.fillStyle = cardStyle.textColor;
-        ctx.fillText(voteCards[voteKeys[_i]].text, 10 + _i * 200, canvas.height / 3 + 30, 150);
+        displayWrappedText(ctx, voteCards[voteKeys[_i]].text, 50 + _i * 200, 295, explainMaxWidth, lineHeight + 5);
     }
 };
 
@@ -170,22 +192,11 @@ var mouseUpHandle = function mouseUpHandle(e) {
     }
 };
 
-var mouseOutHandle = function mouseOutHandle(e) {
-    var hand = users[hash].hand;
-    var mouse = getMouse(e);
-    if (!playedCard) {
-        for (var i = 0; i < hand.length; i++) {
-            if (mouse.x < hand[i].x + 30 + hand[i].width && mouse.x > hand[i].x + 30 && mouse.y < hand[i].y - 60 + hand[i].height && mouse.y > hand[i].y - 60) {
-                console.log("hello");
-                document.querySelector('canvas').style.cursor = "pointer";
-                break;
-            }
-        }
-    }
-};
 // Start a new round
 var startRound = function startRound(data) {
+    document.querySelector('#start').style.display = "none";
     outcome = data;
+    setInterval(gameUpdate, 1000);
     draw();
 };
 
@@ -217,7 +228,6 @@ var init = function init() {
     //event listeners for onmousedown(start button), onmousedown(card),
     canvas.onmousedown = mouseDownHandle;
     canvas.onmouseup = mouseUpHandle;
-    canvas.onmouseout = mouseOutHandle;
 
     outcomeBack = document.querySelector("#outcBack");
     explainBack = document.querySelector("#explBack");
@@ -242,6 +252,7 @@ var connectSocket = function connectSocket() {
         document.querySelector('#connect').style.display = "none";
         document.querySelector('#startRoom').style.display = "none";
         document.querySelector('#canvas').style.display = "block";
+        document.querySelector('#start').style.display = "block";
         //document.querySelector('#webChat').style.display = "block";
     });
 
@@ -256,7 +267,7 @@ var connectSocket = function connectSocket() {
     socket.on('updatePlayers', updatePlayers);
     socket.on('voteCardsUpdated', updateVoteCards);
     //socket.on('cardDrawn', cardDraw);
-    //socket.on('timerUpdated', updateTime);
+    socket.on('timerUpdated', updateTime);
     socket.on('left', removeUser);
 };
 
