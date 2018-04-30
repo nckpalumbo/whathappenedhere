@@ -134,6 +134,11 @@ io.on('connection', (sock) => {
     }
   });
 
+  // Handles messages
+  socket.on('msgToServer', (data) => {
+    io.sockets.in(socket.roomNum).emit('msgToClient', { user: data.user, msg: data.msg });
+  });
+
   // Host starts a new round
   socket.on('roundStart', () => {
     outcomes = shuffle(outcomes);
@@ -145,7 +150,6 @@ io.on('connection', (sock) => {
       for (let j = 0; j < 5; j++) {
         player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 250);
       }
-      // console.log(player.hand);
     }
     const playersLength = Object.keys(rooms[socket.roomNum]);
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });

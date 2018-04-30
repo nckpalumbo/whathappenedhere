@@ -211,9 +211,21 @@ var startRound = function startRound(data) {
     document.querySelector('#timeLabel').style.display = "none";
     document.querySelector('#roundAmount').style.display = "none";
     document.querySelector('#timeAmount').style.display = "none";
+    document.querySelector('#chatSection').style.display = "none";
+    document.querySelector('#messageInput').style.display = "none";
     outcome = data;
     setInterval(gameUpdate, 1000);
     draw();
+};
+
+//Send messages
+var sendMessage = function sendMessage(e) {
+    var messageSend = document.querySelector('#message').value;
+    var user = document.querySelector("#username").value;
+    if (messageSend) {
+        socket.emit('msgToServer', { user: user, msg: messageSend });
+    }
+    document.querySelector('#message').value = '';
 };
 
 // voting function -> reveals all cards and prompts players to vote; prompts server when vote is made or time runs out
@@ -263,6 +275,24 @@ var connectSocket = function connectSocket() {
         socket.emit('searchRoom', { name: user, room: roomNum });
     });
 
+    message.addEventListener('keyup', function (e) {
+        e.preventDefault();
+        if (e.keyCode === 13) {
+            sendMessage();
+            message.value = '';
+        }
+    });
+
+    var chatarea = document.getElementById('chat');
+    socket.on('msgToClient', function (data) {
+        chatarea.scrollTop = chatarea.scrollHeight;
+        if (data.msg) {
+            var text = data.user + ": " + data.msg + '\n';
+            chat.innerHTML += text;
+        }
+    });
+    document.querySelector('#send').onclick = sendMessage;
+
     socket.on('letJoin', function (data) {
         socket.emit('join', { name: data.name, room: data.roomNum });
         document.querySelector('#connect').style.display = "none";
@@ -275,6 +305,8 @@ var connectSocket = function connectSocket() {
         document.querySelector('#timeLabel').style.display = "block";
         document.querySelector('#roundAmount').style.display = "block";
         document.querySelector('#timeAmount').style.display = "block";
+        document.querySelector('#chatSection').style.display = "block";
+        document.querySelector('#messageInput').style.display = "block";
         //document.querySelector('#webChat').style.display = "block";
     });
 
