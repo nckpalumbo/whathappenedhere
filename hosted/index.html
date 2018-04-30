@@ -19,12 +19,20 @@
             <input id="connect" type='button' value='Connect'/>
             <br> <br>
         </div>
-         <div id="mycanvas">
-            <input id="start" type='button' value='Start Game'/>
-            <input type="range" min="5" max="15" value="10" class="slider" id="roundSlider" oninput="roundAmount.value = roundSlider.value">
-            <aside id="roundLabel"> Number of Rounds: </aside> <output id="roundAmount"> 10 </output>
-            <input type="range" min="30" max="60" value="45" class="slider" id="timeSlider" oninput="timeAmount.value = timeSlider.value">
-            <aside id="timeLabel"> Time per Round: </aside> <output id="timeAmount"> 45 </output>
+        <div id="webChat">
+            <textarea id="chat" rows="50" cols="50" readonly> </textarea>
+            <br>
+            <input id="message" name="message" type="text"/>
+            <input id="send" type="button" value="Send" />
+        </div>
+        <div id="mycanvas">
+            <div id="uiContainer">
+                <input type="range" min="5" max="15" value="10" class="slider" id="roundSlider" oninput="roundAmount.value = roundSlider.value">
+                <aside id="roundLabel"> Number of Rounds: </aside> <output id="roundAmount"> 10 </output>
+                <input type="range" min="30" max="60" value="45" class="slider" id="timeSlider" oninput="timeAmount.value = timeSlider.value">
+                <aside id="timeLabel"> Time per Round: </aside> <output id="timeAmount"> 45 </output>
+                <input id="start" type='button' value='Start Game'/>
+            </div>
             <canvas id="canvas" width="1024px" height="768px">
                 Get a real browser!
             </canvas>

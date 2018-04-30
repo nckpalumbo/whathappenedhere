@@ -1,13 +1,11 @@
 body {
     background-color: lightgrey;
+    width: 100%;
+    overflow-x: hidden;
 }
 #title {
     text-align: center;
     color: black;
-}
-
-#webChat {
-    float: left;
 }
 
 #canvas {
@@ -15,6 +13,9 @@ body {
     border: 5px solid black;
     display: none;
     margin: 0 auto;
+    position: absolute;
+    left: 500px;
+    top: 150px;
 }
 
 #hidden {
@@ -58,9 +59,9 @@ body {
 #start {
     width: 400px;
     font-size: 40px;
-    position: absolute;
-    top: 65%;
-    left: 40%;
+    position: relative;
+    left: 175px;
+    top: 600px;
     display: none;
 }
 #start:hover{
@@ -97,11 +98,13 @@ body {
     cursor: pointer;
 }
 #roundSlider {
-    top: 35%;
+    top: 300px;
+    left: 130px;
     display: none;
 }
 #timeSlider {
-    top: 50%;
+    top: 500px;
+    left: 130px;
     display: none;
 }
 #roundAmount {
@@ -109,7 +112,8 @@ body {
     font-style: bold;
     text-align: center;
     position: relative;
-    top: 300px;
+    top: 380px;
+    left: 180px;
     display: none;
 }
 #timeAmount {
@@ -117,7 +121,8 @@ body {
     font-style: bold;
     text-align: center;
     position: relative;
-    top: 400px;
+    top: 510px;
+    left: 180px;
     display: none;
 }
 #roundLabel {
@@ -125,7 +130,8 @@ body {
     font-style: bold;
     position: relative;
     text-align: center;
-    top: 300px;
+    top: 370px;
+    left: 180px;
     display: none;
 }
 #timeLabel {
@@ -133,6 +139,35 @@ body {
     font-style: bold;
     position: relative;
     text-align: center;
-    top: 400px;
+    top: 500px;
+    left: 180px;
     display: none;
+}
+textarea {
+    resize: none;
+    height: 720px;
+    display: block;
+}
+#webChat {
+    display: none;
+    position: absolute;
+    margin: auto;
+    left: 40px;
+    height: 500px;
+    top: 160px;
+    z-index: 0;
+}
+#message {
+    width: 300px;
+    display: inline-block;
+}
+#send {
+    width: 50px;
+    display: inline-block;
+}
+#uiContainer {
+    z-index: 2;
+    position: absolute;
+    left: 650px;
+    top: 100px;
 }

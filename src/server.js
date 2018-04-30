@@ -104,7 +104,6 @@ io.on('connection', (sock) => {
     const playersLength = Object.keys(rooms[data.room]);
     socket.emit('joined', { user: rooms[data.room][userID], id: userID, length: playersLength.length });
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
-    console.log(socket.name);
     console.log(socket.roomNum);
   });
 
@@ -138,7 +137,16 @@ io.on('connection', (sock) => {
   socket.on('msgToServer', (data) => {
     io.sockets.in(socket.roomNum).emit('msgToClient', { user: data.user, msg: data.msg });
   });
-
+  // Host changes amount of rounds
+  socket.on('roundNumChange', (data) => {
+      const newRoundNum = data;
+      io.sockets.in(socket.roomNum).emit('updateRound', newRoundNum);
+  });
+  // Host changes amount of seconds per round
+  socket.on('timeNumChange', (data) => {
+      const newTimeNum = data;
+      io.sockets.in(socket.roomNum).emit('updateTimer', newTimeNum);
+  });
   // Host starts a new round
   socket.on('roundStart', () => {
     outcomes = shuffle(outcomes);

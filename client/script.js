@@ -8,6 +8,7 @@ let hasVoted = false;
 let outcome;
 let score = 0;
 let timer = 0;
+let origTimer = 0;
 let users = {};
 let voteCards = {};
 let outcomeBack;
@@ -90,17 +91,38 @@ const gameStart = (data) => {
     }
     start.addEventListener('click', () => {
         if(length >= 3 && isLeader) {
+            origTimer = timeSlider.value;
             timer = timeSlider.value;
             numRounds = roundSlider.value;
             console.log(timer + " " + numRounds);
             socket.emit('roundStart');
         }
-    });   
+    });
+    roundSlider.addEventListener('change', () => {
+        socket.emit('roundNumChange', roundSlider.value); 
+    });
+    timeSlider.addEventListener('change', () => {
+       socket.emit('timeNumChange', timeSlider.value); 
+    });
 };
 
+const updateRounds = (data) => {
+    const roundSlider = document.querySelector('#roundSlider');
+    const roundAmount = document.querySelector('#roundAmount');
+    roundSlider.value = data;
+    roundAmount.innerHTML = data;
+    
+};
+
+const updateTimers = (data) => {
+    const timeSlider = document.querySelector('#timeSlider');
+    const timeAmount = document.querySelector('#timeAmount');
+    timeSlider.value = data;
+    timeAmount.innerHTML = data;
+};
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 const gameUpdate = () => {
-    // starts timer at 60 seconds and counts down
+    // starts timer at player selected value in seconds and counts down
     socket.emit('timerUpdate', timer);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
@@ -108,8 +130,11 @@ const gameUpdate = () => {
     ctx.fillStyle = cardStyle.textColor;
     if(timer > 0)
         ctx.fillText(timer, 950, 30);
-    else
-        ctx.fillText('0', 950, 30);
+    else if (timer <= 0){
+        timer = 0;
+        ctx.fillText(timer, 950, 30);
+        draw();
+    }
     // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
     // socket.emit('drawCard', ()); after user plays card
@@ -150,11 +175,20 @@ const draw = () => {
     // Draw the cards that are being voted on
     ctx.font = cardStyle.explainFont;
     const voteKeys = Object.keys(voteCards);
+    console.log(voteKeys.length + " " + length);
     for(let i = 0; i < voteKeys.length; i++) {
-        ctx.drawImage(emptyVertical, (40 + i*200), 250);
-        ctx.fillStyle = cardStyle.cardColor;
-        ctx.fillStyle = cardStyle.textColor;
-        displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5)
+        if(voteKeys.length < length && timer > 0) {
+            ctx.drawImage(explainBack, (40 + i*200), 250);
+            ctx.fillStyle = cardStyle.cardColor;
+            ctx.fillStyle = cardStyle.textColor;
+        }
+        else if(voteKeys.length == length) {
+            ctx.drawImage(emptyVertical, (40 + i*200), 250);
+            ctx.fillStyle = cardStyle.cardColor;
+            ctx.fillStyle = cardStyle.textColor;
+            displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5)
+            //timer = origTimer;
+        }
     }
     
 };
@@ -224,8 +258,6 @@ const startRound = (data) => {
     document.querySelector('#timeLabel').style.display = "none";
     document.querySelector('#roundAmount').style.display = "none";
     document.querySelector('#timeAmount').style.display = "none";
-    document.querySelector('#chatSection').style.display = "none";
-    document.querySelector('#messageInput').style.display = "none";
     outcome = data;
     setInterval(gameUpdate, 1000);
     draw();
@@ -262,8 +294,10 @@ const randomNum = r => Math.floor(Math.random() * r);
 const init = () => {
   canvas = document.querySelector('#canvas');
   ctx = canvas.getContext('2d');
-  const connect = document.querySelector("#connect");         
+  const connect = document.querySelector("#connect");    
   connect.addEventListener('click', connectSocket);
+  const chat = document.querySelector('#chat');
+  chat.innerHTML = "";
   //event listeners for onmousedown(start button), onmousedown(card),
   canvas.onmousedown = mouseDownHandle;
   canvas.onmouseup = mouseUpHandle;
@@ -287,21 +321,17 @@ const connectSocket = () => {
   });
     
   message.addEventListener('keyup', function (e) {
-  e.preventDefault();
-  if (e.keyCode === 13) {
-    sendMessage();
-    message.value = '';
-  }
+      e.preventDefault();
+      if(e.keyCode === 13) {
+         sendMessage();
+         message.value = '';
+      }
+  });
+
+  socket.on('msgToClient', (data) => {
+      chat.innerHTML += data.user + ": " + data.msg + '\n';
   });
     
-  var chatarea = document.getElementById('chat');
-  socket.on('msgToClient', function (data) {
-    chatarea.scrollTop = chatarea.scrollHeight;
-    if (data.msg) {
-      var text = data.user + ": " + data.msg + '\n';
-      chat.innerHTML += text;
-    }
-  });
   document.querySelector('#send').onclick = sendMessage;
 
   socket.on('letJoin', (data) => {
@@ -316,9 +346,9 @@ const connectSocket = () => {
       document.querySelector('#timeLabel').style.display = "block";
       document.querySelector('#roundAmount').style.display = "block";
       document.querySelector('#timeAmount').style.display = "block";
-      document.querySelector('#chatSection').style.display = "block";
-      document.querySelector('#messageInput').style.display = "block";
-      //document.querySelector('#webChat').style.display = "block";
+      document.querySelector('#message').style.display = "inline-block";
+      document.querySelector('#send').style.display = "inline-block";
+      document.querySelector('#webChat').style.display = "block";
   });
 
   socket.on('nameTaken', (data) => {
@@ -328,6 +358,8 @@ const connectSocket = () => {
       socket.disconnect();
   });
   socket.on('joined', createUser);
+  socket.on('updateRound', updateRounds);
+  socket.on('updateTimer', updateTimers);
   socket.on('newRound', startRound);
   socket.on('updatePlayers', updatePlayers);
   socket.on('voteCardsUpdated', updateVoteCards);
