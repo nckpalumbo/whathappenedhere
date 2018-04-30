@@ -15,6 +15,7 @@ let explainBack;
 let emptyHorizontal;
 let emptyVertical;
 let length;
+let numRounds;
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
@@ -75,24 +76,32 @@ const updateTime = (data) => {
 // game function -> prompts leader to start game if there are at least 3 players in room
 const gameStart = (data) => {
     const start = document.querySelector('#start');
+    const roundSlider = document.querySelector('#roundSlider');
+    const timeSlider = document.querySelector('#timeSlider');
+    if(isLeader) {
+        start.disabled = false;
+        roundSlider.disabled = false;
+        timeSlider.disabled = false;
+    }
+    else {
+        start.disabled = true;
+        roundSlider.disabled = true;
+        timeSlider.disabled = true;
+    }
     start.addEventListener('click', () => {
         if(length >= 3 && isLeader) {
-            timer = 60;
+            timer = timeSlider.value;
+            numRounds = roundSlider.value;
+            console.log(timer + " " + numRounds);
             socket.emit('roundStart');
         }
-        else if(length < 3 && isLeader) {
-            console.log("not enough people");
-        }
-    });
-   
+    });   
 };
 
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 const gameUpdate = () => {
-    console.log('called');
     // starts timer at 60 seconds and counts down
     socket.emit('timerUpdate', timer);
-    //ctx.clearRect(944, 0, 80, 80);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
     ctx.font = ("32px Helvetica");
@@ -209,6 +218,12 @@ const mouseUpHandle = (e) => {
 // Start a new round
 const startRound = (data) => {
     document.querySelector('#start').style.display = "none";
+    document.querySelector('#roundSlider').style.display = "none";
+    document.querySelector('#timeSlider').style.display = "none";
+    document.querySelector('#roundLabel').style.display = "none";
+    document.querySelector('#timeLabel').style.display = "none";
+    document.querySelector('#roundAmount').style.display = "none";
+    document.querySelector('#timeAmount').style.display = "none";
     outcome = data;
     setInterval(gameUpdate, 1000);
     draw();
@@ -265,6 +280,12 @@ const connectSocket = () => {
       document.querySelector('#startRoom').style.display = "none";
       document.querySelector('#canvas').style.display = "block";
       document.querySelector('#start').style.display = "block";
+      document.querySelector('#roundSlider').style.display = "block";
+      document.querySelector('#timeSlider').style.display = "block";
+      document.querySelector('#roundLabel').style.display = "block";
+      document.querySelector('#timeLabel').style.display = "block";
+      document.querySelector('#roundAmount').style.display = "block";
+      document.querySelector('#timeAmount').style.display = "block";
       //document.querySelector('#webChat').style.display = "block";
   });
 
