@@ -52,11 +52,24 @@ body {
 #startRoom input[type="text"] {
     font-size: 18px;
 }
-#connect {
-    width: 200px;
+#connect, #dlc {
+    width: 145px;
     font-size: 20px;
 }
-#connect:hover{
+#purchase {
+    width: 145px;
+    font-size: 20px;
+    position: absolute;
+    left: 314px;
+}
+#returnToMenu{
+    width: 145px;
+    font-size: 20px;
+    display: block;
+    left: 38%;
+    margin: 0 auto;
+}
+#connect:hover, #dlc:hover, #returnToMenu:hover, #purchase:hover{
     cursor: pointer;
 }
 #start {
@@ -187,4 +200,11 @@ textarea {
     position: absolute;
     left: 650px;
     top: 100px;
+}
+#dlcCanvas {
+    display: none;
+    margin: 0 auto;
+    position: absolute;
+    left: 38%;
+    font-size: 24px;
 }

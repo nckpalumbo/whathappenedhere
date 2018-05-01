@@ -241,13 +241,19 @@ const draw = () => {
     
     // Draw the cards that are being voted on
     ctx.font = cardStyle.explainFont;
-    for(let i = 0; i < voteKeys.length; i++) {
-        if(voteKeys.length < length && timer > 0) {
+    for(let i = 0; i < voteKeys.length; i++) {0
+        if(voteKeys.length < length && timer > 0 && state === GAMESTATE.SELECT) {
             ctx.drawImage(explainBack, (40 + i*200), 250);
             ctx.fillStyle = cardStyle.cardColor;
             ctx.fillStyle = cardStyle.textColor;
         }
-        else if(voteKeys.length == length) {
+        else if(voteKeys.length < length && timer <= 0) {
+            ctx.drawImage(emptyVertical, (40 + i*200), 250);
+            ctx.fillStyle = cardStyle.cardColor;
+            ctx.fillStyle = cardStyle.textColor;
+            displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5);
+        }
+        else if(voteKeys.length == length || state === GAMESTATE.VOTE) {
             ctx.drawImage(emptyVertical, (40 + i*200), 250);
             ctx.fillStyle = cardStyle.cardColor;
             ctx.fillStyle = cardStyle.textColor;
@@ -348,8 +354,6 @@ var sendMessage = function sendMessage(e) {
 
 // end game function -> ends game if player has reached max points, or less than 3 people left in room
 
-// in app purchases function -> let's players "buy" packs for $$ or in-game currency (points); probably just make all free for game
-
 // delete user function -> if they leave room, erase their data
 const removeUser = (data) => {
   if (users[data]) {
@@ -365,6 +369,10 @@ const init = () => {
   ctx = canvas.getContext('2d');
   const connect = document.querySelector("#connect");    
   connect.addEventListener('click', connectSocket);
+  const dlc = document.querySelector("#dlc");
+  dlc.addEventListener('click', showDLC);
+  const returnToMenu = document.querySelector('#returnToMenu');
+  returnToMenu.addEventListener('click', displayMenu);
   const chat = document.querySelector('#chat');
   chat.innerHTML = "";
   //event listeners for onmousedown(start button), onmousedown(card),
@@ -375,6 +383,19 @@ const init = () => {
   explainBack = document.querySelector("#explBack");
   emptyHorizontal = document.querySelector("#emptyHor");
   emptyVertical = document.querySelector("#emptyVer");
+};
+
+const showDLC = () => {
+    document.querySelector('#dlcCanvas').style.display = "block";
+    document.querySelector('#connect').style.display = "none";
+    document.querySelector('#startRoom').style.display = "none";
+    document.querySelector('#dlc').style.display = "none";
+};
+const displayMenu = () => {
+    document.querySelector('#dlcCanvas').style.display = "none";
+    document.querySelector('#connect').style.display = "inline-block";
+    document.querySelector('#startRoom').style.display = "block";
+    document.querySelector('#dlc').style.display = "inline-block";
 };
 
 const connectSocket = () => {
