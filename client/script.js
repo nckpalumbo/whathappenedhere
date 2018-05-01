@@ -18,7 +18,6 @@ let emptyVertical;
 let length;
 let numRounds;
 let state = 0;
-let scoreBox;
 
 // Create an object to hold the gamestates
 const GAMESTATE = {
@@ -79,11 +78,14 @@ const updatePlayers = (data) => {
     console.log(length);
     const keys = Object.keys(users);
     let scoreDisplay = "";
+    document.getElementById("scoreHolder").innerHTML = "";
     for(let i = 0; i < keys.length; i++) {
-        let user = users[keys[i]]
-        scoreDisplay += user.name + ": " + user.score + "\n";
+        let user = users[keys[i]];
+        var userScoreElement = document.createElement("h4");
+        var userScore = document.createTextNode(user.name + ": " + user.score);
+        userScoreElement.appendChild(userScore);
+        document.getElementById("scoreHolder").appendChild(userScoreElement);
     }
-    scoreBox.innerHTML = scoreDisplay;
 };
 
 // Update the timer
@@ -114,6 +116,9 @@ const gameStart = (data) => {
             console.log(timer + " " + numRounds);
             socket.emit('roundStart');
         }
+        else {
+            socket.emit('msgToServer', {user: 'Server', msg: 'You must have at least 3 players ready to start.' });
+        }
     });
     roundSlider.addEventListener('change', () => {
         socket.emit('roundNumChange', roundSlider.value); 
@@ -142,14 +147,14 @@ const gameUpdate = () => {
     // starts timer at player selected value in seconds and counts down
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
-    ctx.font = ("32px Helvetica");
+    ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
     ctx.fillStyle = cardStyle.textColor;
     if(timer > 0 && (state === GAMESTATE.SELECT || state === GAMESTATE.VOTE)) {
         socket.emit('timerUpdate', timer);
-        ctx.fillText(timer, 950, 30);
+        ctx.fillText(timer, 975, 50);
     } else if (timer <= 0){
         timer = 0;
-        ctx.fillText(timer, 950, 30);
+        ctx.fillText(timer, 975, 50);
         if(state === GAMESTATE.SELECT) {
             state++;
             timer = origTimer;
@@ -182,12 +187,12 @@ const draw = () => {
     let explainMaxWidth = 135;
     let lineHeight = 30;
     
-    ctx.font = ("32px Helvetica");
+    ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
     ctx.fillStyle = cardStyle.textColor;
     if(timer > 0)
-        ctx.fillText(timer, 950, 30);
+        ctx.fillText(timer, 975, 50);
     else
-        ctx.fillText('0', 950, 30);
+        ctx.fillText('0', 975, 50);
     
     // Draw the outcome card
     ctx.font = cardStyle.outcomeFont;
@@ -196,24 +201,46 @@ const draw = () => {
     ctx.drawImage(outcomeBack, outcome.x - 225, outcome.y);
     ctx.drawImage(emptyHorizontal, outcome.x + 100, outcome.y);
     displayWrappedText(ctx, outcome.text, outcome.x + 110, outcome.y + 45, outcomeMaxWidth, lineHeight)
-    ctx.font = ("32px Helvetica");
+    //Because
+    ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
     ctx.fillText("Because... ", (canvas.width / 2) - 60, (canvas.height / 3) - 50, 200);
+    
+    const voteKeys = Object.keys(voteCards);
+    if(voteKeys.length === length) {
+        if(state === GAMESTATE.SELECT) {
+            timer = origTimer;
+            state++;
+        }
+        if(state === GAMESTATE.VOTE) { //Prompt vote
+            ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
+            ctx.fillText("Click on a card to vote for your favorite... ", (canvas.width / 2) - 175, canvas.height - 150, 400);
+        }
+    }
     
     // Draw the player's hand
     ctx.font = cardStyle.explainFont;
     for(let i = 0; i < users[hash].hand.length; i++) {
         const card = users[hash].hand[i];
+        if(state === GAMESTATE.VOTE) {
+            ctx.globalAlpha = 0;
+        }
+        else if(state === GAMESTATE.SELECT){
+            ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
+            ctx.fillText("Waiting for everyone to select a card... ", (canvas.width / 2) - 175, canvas.height/2, 400);
+        }
+        else {
+            ctx.globalAlpha = 1;
+        }
         ctx.drawImage(emptyVertical, card.x + 30, card.y - 60);
         ctx.font = cardStyle.explainFont;
         ctx.fillStyle = cardStyle.cardColor;
         ctx.fillStyle = cardStyle.textColor;
         displayWrappedText(ctx, card.text, card.x + 40, card.y - 15, explainMaxWidth, lineHeight + 5)
+        ctx.globalAlpha = 1;
     }
     
     // Draw the cards that are being voted on
     ctx.font = cardStyle.explainFont;
-    const voteKeys = Object.keys(voteCards);
-    console.log(voteKeys.length + " " + length);
     for(let i = 0; i < voteKeys.length; i++) {
         if(voteKeys.length < length && timer > 0) {
             ctx.drawImage(explainBack, (40 + i*200), 250);
@@ -224,11 +251,9 @@ const draw = () => {
             ctx.drawImage(emptyVertical, (40 + i*200), 250);
             ctx.fillStyle = cardStyle.cardColor;
             ctx.fillStyle = cardStyle.textColor;
-            displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5)
-            //timer = origTimer;
+            displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5);
         }
     }
-    
 };
 
 // Update the explanations that have been submitted
@@ -261,15 +286,18 @@ const mouseDownHandle = (e) => {
         }
     }
     
-    if(state === GAMESTATE.VOTE) {
+    if(state === GAMESTATE.VOTE && !hasVoted) {
         const voteKeys = Object.keys(voteCards);
         for(let i = 0; i < voteKeys.length; i++) {
             if(mouse.x < (voteCards[voteKeys[i]].x + voteCards[voteKeys[i]].width) && 
                 mouse.x > voteCards[voteKeys[i]].x &&
                 mouse.y < (voteCards[voteKeys[i]].y + voteCards[voteKeys[i]].height) &&
                 mouse.y > voteCards[voteKeys[i]].y) {
-                voteCards[voteKeys[i]].votes++;
-                break;
+                if(voteKeys[i] !== hash) {
+                    voteCards[voteKeys[i]].votes++;
+                    hasVoted = true;
+                    break;
+                }
             }
         }
     }
@@ -335,7 +363,6 @@ const randomNum = r => Math.floor(Math.random() * r);
 const init = () => {
   canvas = document.querySelector('#canvas');
   ctx = canvas.getContext('2d');
-    scoreBox = document.querySelector('#scoreZone');
   const connect = document.querySelector("#connect");    
   connect.addEventListener('click', connectSocket);
   const chat = document.querySelector('#chat');
@@ -359,7 +386,12 @@ const connectSocket = () => {
       if(!user) {
           user = 'unknown';   
       }
-      socket.emit('searchRoom', {name: user, room: roomNum});
+      if(roomNum != "") {
+          socket.emit('searchRoom', {name: user, room: roomNum});
+      }
+      else {
+          window.alert("You must enter a room code");
+      }
   });
     
   message.addEventListener('keyup', function (e) {
@@ -390,8 +422,8 @@ const connectSocket = () => {
       document.querySelector('#timeAmount').style.display = "block";
       document.querySelector('#message').style.display = "inline-block";
       document.querySelector('#send').style.display = "inline-block";
-      document.querySelector('#webChat').style.display = "block";
-      document.querySelector('#score').style.display = "block";
+      document.querySelector('#chatSection').style.display = "block";
+      document.querySelector('#scoreArea').style.display = "block";
   });
 
   socket.on('nameTaken', (data) => {

@@ -104,7 +104,6 @@ io.on('connection', (sock) => {
     const playersLength = Object.keys(rooms[data.room]);
     socket.emit('joined', { user: rooms[data.room][userID], id: userID, length: playersLength.length });
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
-    console.log(socket.roomNum);
   });
 
   // Shuffle the cards
@@ -126,7 +125,6 @@ io.on('connection', (sock) => {
     if (player.hand.length > 5) {
       // If not, give them a card
       const explanation = new Card(explanations.pop(), 0, 0, 150, 250);
-      // console.log(explanation);
       player.hand.unshift(explanation);
       // Update the client with the new information
       socket.emit('cardDrawn', player);
@@ -188,7 +186,7 @@ io.on('connection', (sock) => {
     const keys = Object.keys(voteCards);
     let ifExists = false;
     for (let i = 0; i < keys.length; i++) {
-      if (voteCards[i] === socket.roomNum) {
+      if (keys[i] === socket.roomNum) {
         ifExists = true;
       }
     }

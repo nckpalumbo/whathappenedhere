@@ -19,11 +19,11 @@
             <input id="connect" type='button' value='Connect'/>
             <br> <br>
         </div>
-        <div id="webChat">
-            <textarea id="chat" rows="50" cols="50" readonly> </textarea>
-            <br>
-            <input id="message" name="message" type="text"/>
-            <input id="send" type="button" value="Send" />
+        <div id="chatSection">
+            <textarea id="chat" rows="30" cols="40" style="border:solid 5px black;" readonly></textarea><br>
+            <label for="message">Chat Here: </label>
+            <input id="message" name="message" type="text" size="20"/>
+            <input id="send" type="button" value="Send"/>
         </div>
         <div id="mycanvas">
             <div id="uiContainer">
@@ -37,10 +37,9 @@
                 Get a real browser!
             </canvas>
         </div>
-        <div id="score">
-            <label>Score</label>
-            <br>
-            <textarea id="scoreZone" rows="5" cols="50" readonly></textarea>
+        <div id="scoreArea">
+            <label id="scoreLabel"><span style="text-decoration: underline;">Points:</span></label>
+            <div id="scoreHolder"></div>
         </div>
         <div id="hidden">
             <img src="./assets/emptyCardHorizontal.png" id="emptyHor"/>

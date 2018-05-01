@@ -3,6 +3,9 @@ body {
     width: 100%;
     overflow-x: hidden;
 }
+*{
+    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+}
 #title {
     text-align: center;
     color: black;
@@ -60,7 +63,7 @@ body {
     width: 400px;
     font-size: 40px;
     position: relative;
-    left: 175px;
+    left: 185px;
     top: 600px;
     display: none;
 }
@@ -143,25 +146,36 @@ body {
     left: 180px;
     display: none;
 }
-#score {
-    float: right;
+#scoreArea {
+    display: none;
+    position: relative;
+    margin: auto;
+    left: 1600px;
+    height: 500px;
+    top: 70px;
+    z-index: 0;
+    font-size: 40px;
+}
+#scoreHolder {
+    display: block;
+    height: 100%;
 }
 textarea {
     resize: none;
     height: 720px;
     display: block;
 }
-#webChat {
+#chatSection {
     display: none;
     position: absolute;
     margin: auto;
-    left: 40px;
+    left: 50px;
     height: 500px;
     top: 160px;
     z-index: 0;
 }
 #message {
-    width: 300px;
+    width: 170px;
     display: inline-block;
 }
 #send {
