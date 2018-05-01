@@ -18,6 +18,7 @@ let emptyVertical;
 let length;
 let numRounds;
 let state = 0;
+let scoreBox;
 
 // Create an object to hold the gamestates
 const GAMESTATE = {
@@ -76,6 +77,13 @@ const updatePlayers = (data) => {
     users = data.room;
     length = data.length;
     console.log(length);
+    const keys = Object.keys(users);
+    let scoreDisplay = "";
+    for(let i = 0; i < keys.length; i++) {
+        let user = users[keys[i]]
+        scoreDisplay += user.name + ": " + user.score + "\n";
+    }
+    scoreBox.innerHTML = scoreDisplay;
 };
 
 // Update the timer
@@ -142,8 +150,9 @@ const gameUpdate = () => {
     } else if (timer <= 0){
         timer = 0;
         ctx.fillText(timer, 950, 30);
-        if(state === GAMESTATE.SELECT || state === GAMESTATE.VOTE) {
+        if(state === GAMESTATE.SELECT) {
             state++;
+            timer = origTimer;
         }
         draw();
     }
@@ -159,6 +168,7 @@ const gameUpdate = () => {
             socket.emit('scoreUpdated', users[keys[i]].score);
         }
     }
+    console.log("state: " + state);
 };
 
 // Draw the game
@@ -325,6 +335,7 @@ const randomNum = r => Math.floor(Math.random() * r);
 const init = () => {
   canvas = document.querySelector('#canvas');
   ctx = canvas.getContext('2d');
+    scoreBox = document.querySelector('#scoreZone');
   const connect = document.querySelector("#connect");    
   connect.addEventListener('click', connectSocket);
   const chat = document.querySelector('#chat');
@@ -380,6 +391,7 @@ const connectSocket = () => {
       document.querySelector('#message').style.display = "inline-block";
       document.querySelector('#send').style.display = "inline-block";
       document.querySelector('#webChat').style.display = "block";
+      document.querySelector('#score').style.display = "block";
   });
 
   socket.on('nameTaken', (data) => {

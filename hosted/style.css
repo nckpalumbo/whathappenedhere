@@ -143,6 +143,9 @@ body {
     left: 180px;
     display: none;
 }
+#score {
+    float: right;
+}
 textarea {
     resize: none;
     height: 720px;

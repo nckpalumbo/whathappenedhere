@@ -135,7 +135,7 @@ io.on('connection', (sock) => {
 
   socket.on('scoreUpdated', (data) => {
     rooms[socket.roomNum][socket.userID].score = data;
-    const playersLength = Object.keys(rooms[data.room]);
+    const playersLength = Object.keys(rooms[socket.roomNum]);
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
   });
 
@@ -185,7 +185,20 @@ io.on('connection', (sock) => {
 
   // Handle when a user clicks the explanation for the current outcome
   socket.on('cardPicked', (data) => {
-    voteCards[socket.roomNum][socket.userID] = data;
+    const keys = Object.keys(voteCards);
+    let ifExists = false;
+    for (let i = 0; i < keys.length; i++) {
+      if (voteCards[i] === socket.roomNum) {
+        ifExists = true;
+      }
+    }
+    if (ifExists) {
+      voteCards[socket.roomNum][socket.userID] = data;
+    } else {
+      const group = {};
+      voteCards[socket.roomNum] = group;
+      voteCards[socket.roomNum][socket.userID] = data;
+    }
     io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
   });
 

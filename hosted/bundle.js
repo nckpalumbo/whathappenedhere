@@ -19,6 +19,16 @@ var emptyHorizontal = void 0;
 var emptyVertical = void 0;
 var length = void 0;
 var numRounds = void 0;
+var state = 0;
+var scoreBox = void 0;
+
+// Create an object to hold the gamestates
+var GAMESTATE = {
+    START: 0,
+    SELECT: 1,
+    VOTE: 2,
+    ENDROUND: 3
+};
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
@@ -65,6 +75,13 @@ var updatePlayers = function updatePlayers(data) {
     users = data.room;
     length = data.length;
     console.log(length);
+    var keys = Object.keys(users);
+    var scoreDisplay = "";
+    for (var i = 0; i < keys.length; i++) {
+        var user = users[keys[i]];
+        scoreDisplay += user.name + ": " + user.score + "\n";
+    }
+    scoreBox.innerHTML = scoreDisplay;
 };
 
 // Update the timer
@@ -119,19 +136,35 @@ var updateTimers = function updateTimers(data) {
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 var gameUpdate = function gameUpdate() {
     // starts timer at player selected value in seconds and counts down
-    socket.emit('timerUpdate', timer);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
     ctx.font = "32px Helvetica";
     ctx.fillStyle = cardStyle.textColor;
-    if (timer > 0) ctx.fillText(timer, 950, 30);else if (timer <= 0) {
+    if (timer > 0 && (state === GAMESTATE.SELECT || state === GAMESTATE.VOTE)) {
+        socket.emit('timerUpdate', timer);
+        ctx.fillText(timer, 950, 30);
+    } else if (timer <= 0) {
         timer = 0;
         ctx.fillText(timer, 950, 30);
+        if (state === GAMESTATE.SELECT) {
+            state++;
+            timer = origTimer;
+        }
         draw();
     }
     // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
     // socket.emit('drawCard', ()); after user plays card
+
+    // Counts up the votes when all the voting state is over
+    if (state === GAMESTATE.ENDROUND) {
+        var keys = Object.keys(voteCards);
+        for (var i = 0; i < keys.length; i++) {
+            users[keys[i]].score += voteCards[keys[i]].votes;
+            socket.emit('scoreUpdated', users[keys[i]].score);
+        }
+    }
+    console.log("state: " + state);
 };
 
 // Draw the game
@@ -144,6 +177,10 @@ var draw = function draw() {
     var outcomeMaxWidth = 230;
     var explainMaxWidth = 135;
     var lineHeight = 30;
+
+    ctx.font = "32px Helvetica";
+    ctx.fillStyle = cardStyle.textColor;
+    if (timer > 0) ctx.fillText(timer, 950, 30);else ctx.fillText('0', 950, 30);
 
     // Draw the outcome card
     ctx.font = cardStyle.outcomeFont;
@@ -203,7 +240,7 @@ var getMouse = function getMouse(e) {
 var mouseDownHandle = function mouseDownHandle(e) {
     var hand = users[hash].hand;
     var mouse = getMouse(e);
-    if (!playedCard) {
+    if (!playedCard && state === GAMESTATE.SELECT) {
         for (var i = 0; i < hand.length; i++) {
             if (mouse.x < hand[i].x + 30 + hand[i].width && mouse.x > hand[i].x + 30 && mouse.y < hand[i].y - 60 + hand[i].height && mouse.y > hand[i].y - 60) {
                 hand[i].clicked = true;
@@ -212,11 +249,13 @@ var mouseDownHandle = function mouseDownHandle(e) {
         }
     }
 
-    var voteKeys = Object.keys(voteCards);
-    for (var _i2 = 0; _i2 < voteKeys.length; _i2++) {
-        if (mouse.x < voteCards[voteKeys[_i2]].x + voteCards[voteKeys[_i2]].width && mouse.x > voteCards[voteKeys[_i2]].x && mouse.y < voteCards[voteKeys[_i2]].y + voteCards[voteKeys[_i2]].height && mouse.y > voteCards[voteKeys[_i2]].y) {
-            voteCards[voteKeys[_i2]].votes++;
-            break;
+    if (state === GAMESTATE.VOTE) {
+        var voteKeys = Object.keys(voteCards);
+        for (var _i2 = 0; _i2 < voteKeys.length; _i2++) {
+            if (mouse.x < voteCards[voteKeys[_i2]].x + voteCards[voteKeys[_i2]].width && mouse.x > voteCards[voteKeys[_i2]].x && mouse.y < voteCards[voteKeys[_i2]].y + voteCards[voteKeys[_i2]].height && mouse.y > voteCards[voteKeys[_i2]].y) {
+                voteCards[voteKeys[_i2]].votes++;
+                break;
+            }
         }
     }
 };
@@ -246,6 +285,7 @@ var startRound = function startRound(data) {
     document.querySelector('#timeAmount').style.display = "none";
     outcome = data;
     setInterval(gameUpdate, 1000);
+    state++;
     draw();
 };
 
@@ -282,6 +322,7 @@ var randomNum = function randomNum(r) {
 var init = function init() {
     canvas = document.querySelector('#canvas');
     ctx = canvas.getContext('2d');
+    scoreBox = document.querySelector('#scoreZone');
     var connect = document.querySelector("#connect");
     connect.addEventListener('click', connectSocket);
     var chat = document.querySelector('#chat');
@@ -337,6 +378,7 @@ var connectSocket = function connectSocket() {
         document.querySelector('#message').style.display = "inline-block";
         document.querySelector('#send').style.display = "inline-block";
         document.querySelector('#webChat').style.display = "block";
+        document.querySelector('#score').style.display = "block";
     });
 
     socket.on('nameTaken', function (data) {
