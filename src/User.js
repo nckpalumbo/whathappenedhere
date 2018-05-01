@@ -6,6 +6,7 @@ class User {
     this.host = false;
     this.name = name;
     this.room = room;
+    this.score = 0;
   }
 }
 

@@ -17,6 +17,15 @@ let emptyHorizontal;
 let emptyVertical;
 let length;
 let numRounds;
+let state = 0;
+
+// Create an object to hold the gamestates
+const GAMESTATE = {
+    START: 0,
+    SELECT: 1,
+    VOTE: 2,
+    ENDROUND: 3,
+};
 
 // create user function -> if first user in room make them leader, others are normal players
 // only leader can start game (must be 3 people in room at least)
@@ -123,21 +132,33 @@ const updateTimers = (data) => {
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 const gameUpdate = () => {
     // starts timer at player selected value in seconds and counts down
-    socket.emit('timerUpdate', timer);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
     ctx.font = ("32px Helvetica");
     ctx.fillStyle = cardStyle.textColor;
-    if(timer > 0)
+    if(timer > 0 && (state === GAMESTATE.SELECT || state === GAMESTATE.VOTE)) {
+        socket.emit('timerUpdate', timer);
         ctx.fillText(timer, 950, 30);
-    else if (timer <= 0){
+    } else if (timer <= 0){
         timer = 0;
         ctx.fillText(timer, 950, 30);
+        if(state === GAMESTATE.SELECT || state === GAMESTATE.VOTE) {
+            state++;
+        }
         draw();
     }
     // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
     // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
     // socket.emit('drawCard', ()); after user plays card
+    
+    // Counts up the votes when all the voting state is over
+    if(state === GAMESTATE.ENDROUND) {
+        let keys = Object.keys(voteCards);
+        for(let i = 0; i < keys.length; i++) {
+            users[keys[i]].score += voteCards[keys[i]].votes;
+            socket.emit('scoreUpdated', users[keys[i]].score);
+        }
+    }
 };
 
 // Draw the game
@@ -150,6 +171,13 @@ const draw = () => {
     let outcomeMaxWidth = 230;
     let explainMaxWidth = 135;
     let lineHeight = 30;
+    
+    ctx.font = ("32px Helvetica");
+    ctx.fillStyle = cardStyle.textColor;
+    if(timer > 0)
+        ctx.fillText(timer, 950, 30);
+    else
+        ctx.fillText('0', 950, 30);
     
     // Draw the outcome card
     ctx.font = cardStyle.outcomeFont;
@@ -211,7 +239,7 @@ const getMouse = (e) => {
 const mouseDownHandle = (e) => {
     let hand = users[hash].hand;
     const mouse = getMouse(e);
-    if(!playedCard){
+    if(!playedCard && state === GAMESTATE.SELECT){
         for(let i = 0; i < hand.length; i++) {
             if(mouse.x < ((hand[i].x + 30) + hand[i].width) && 
                 mouse.x > (hand[i].x + 30) &&
@@ -223,14 +251,16 @@ const mouseDownHandle = (e) => {
         }
     }
     
-    const voteKeys = Object.keys(voteCards);
-    for(let i = 0; i < voteKeys.length; i++) {
-        if(mouse.x < (voteCards[voteKeys[i]].x + voteCards[voteKeys[i]].width) && 
-            mouse.x > voteCards[voteKeys[i]].x &&
-            mouse.y < (voteCards[voteKeys[i]].y + voteCards[voteKeys[i]].height) &&
-            mouse.y > voteCards[voteKeys[i]].y) {
-            voteCards[voteKeys[i]].votes++;
-            break;
+    if(state === GAMESTATE.VOTE) {
+        const voteKeys = Object.keys(voteCards);
+        for(let i = 0; i < voteKeys.length; i++) {
+            if(mouse.x < (voteCards[voteKeys[i]].x + voteCards[voteKeys[i]].width) && 
+                mouse.x > voteCards[voteKeys[i]].x &&
+                mouse.y < (voteCards[voteKeys[i]].y + voteCards[voteKeys[i]].height) &&
+                mouse.y > voteCards[voteKeys[i]].y) {
+                voteCards[voteKeys[i]].votes++;
+                break;
+            }
         }
     }
 };
@@ -260,6 +290,7 @@ const startRound = (data) => {
     document.querySelector('#timeAmount').style.display = "none";
     outcome = data;
     setInterval(gameUpdate, 1000);
+    state++;
     draw();
 };
 

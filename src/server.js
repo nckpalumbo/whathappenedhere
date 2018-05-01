@@ -133,19 +133,25 @@ io.on('connection', (sock) => {
     }
   });
 
+  socket.on('scoreUpdated', (data) => {
+    rooms[socket.roomNum][socket.userID].score = data;
+    const playersLength = Object.keys(rooms[data.room]);
+    io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
+  });
+
   // Handles messages
   socket.on('msgToServer', (data) => {
     io.sockets.in(socket.roomNum).emit('msgToClient', { user: data.user, msg: data.msg });
   });
   // Host changes amount of rounds
   socket.on('roundNumChange', (data) => {
-      const newRoundNum = data;
-      io.sockets.in(socket.roomNum).emit('updateRound', newRoundNum);
+    const newRoundNum = data;
+    io.sockets.in(socket.roomNum).emit('updateRound', newRoundNum);
   });
   // Host changes amount of seconds per round
   socket.on('timeNumChange', (data) => {
-      const newTimeNum = data;
-      io.sockets.in(socket.roomNum).emit('updateTimer', newTimeNum);
+    const newTimeNum = data;
+    io.sockets.in(socket.roomNum).emit('updateTimer', newTimeNum);
   });
   // Host starts a new round
   socket.on('roundStart', () => {
@@ -179,8 +185,8 @@ io.on('connection', (sock) => {
 
   // Handle when a user clicks the explanation for the current outcome
   socket.on('cardPicked', (data) => {
-    voteCards[data.text] = data;
-    io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards);
+    voteCards[socket.roomNum][socket.userID] = data;
+    io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
   });
 
   // Handle a user disconnecting
