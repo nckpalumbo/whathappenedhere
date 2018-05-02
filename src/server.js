@@ -35,15 +35,6 @@ const rooms = {};
 let outcomes = [];
 let explanations = [];
 const voteCards = {};
-// Read in the card data
-fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
-  if (err) throw err;
-  outcomes = data.toString().split('\n');
-});
-fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
-  if (err) throw err;
-  explanations = data.toString().split('\n');
-});
 
 // Handle a connection to the server
 io.on('connection', (sock) => {
@@ -64,7 +55,9 @@ io.on('connection', (sock) => {
           nameExists = true;
         }
       }
-      if (nameExists) {
+      if (Object.keys(rooms[data.room]).length > 4) {
+        socket.emit('maxLimit', {msg: 'Sorry, the maximum amount of players are in this room already.'});
+      } else if (nameExists) {
         socket.emit('nameTaken', { msg: 'Sorry, this username exists in this room already.' });
       } else {
         // if player with username not in room and if game in room not started, let player join
@@ -90,7 +83,7 @@ io.on('connection', (sock) => {
     const userID = xxh.h32(`${socket.id}${new Date().getTime()}`, 0xDEADDEAD).toString(16);
 
     // Create the new user using the unique ID and add to list
-    rooms[data.room][userID] = new User(userID, data.name, data.roomNum);
+    rooms[data.room][userID] = new User(userID, data.name, data.room);
 
     const keys = Object.keys(rooms[socket.roomNum]);
     if (keys.length === 1) {
@@ -153,6 +146,15 @@ io.on('connection', (sock) => {
   });
   // Host starts a new round
   socket.on('roundStart', () => {
+  // Read in the card data
+    fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
+      if (err) throw err;
+      outcomes = data.toString().split('\n');
+    });
+    fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
+      if (err) throw err;
+      explanations = data.toString().split('\n');
+    });
     outcomes = shuffle(outcomes);
     explanations = shuffle(explanations);
 
@@ -199,16 +201,40 @@ io.on('connection', (sock) => {
     }
     io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
   });
-
+    
+  socket.on('gameOver', () => {
+     io.sockets.in(socket.roomNum).emit('endGame'); 
+  });
+    
   // Handle a user disconnecting
   socket.on('disconnect', () => {
     // Send the info of the user leaving to the clients
+    console.log(Object.keys(rooms[socket.roomNum]));
+    const keys = Object.keys(rooms[socket.roomNum]);
+    if (keys.length > 1) {
+      for (let i = 0; i < keys.length; i++) {
+        const quitter = rooms[socket.roomNum][socket.userID];
+        const player = rooms[socket.roomNum][keys[i]];
+        if (quitter === player && quitter.host === true) {
+          for (let j = i + 1; j < keys.length; j++) {
+            if (rooms[socket.roomNum][keys[j]]) {
+              const newHost = rooms[socket.roomNum][keys[j]];
+              newHost.host = true;
+              quitter.host = false;
+              io.sockets.in(socket.roomNum).emit('updateLeader', newHost);
+              break;
+            }
+          }
+        }
+      }
+    }
     io.sockets.in(socket.roomNum).emit('left', rooms[socket.roomNum][socket.userID]);
-
     // Remove the user from the list
     delete rooms[socket.roomNum][socket.userID];
 
     // Remove the socket that disconnected
     socket.leave(socket.roomNum);
+    const playersLength = Object.keys(rooms[socket.roomNum]);
+    io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
   });
 });
