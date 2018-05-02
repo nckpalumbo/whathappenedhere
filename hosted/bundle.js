@@ -9,18 +9,21 @@ var outcomeBack = void 0;
 var explainBack = void 0;
 var emptyHorizontal = void 0;
 var emptyVertical = void 0;
+var gameloopVar = void 0;
 var users = {};
 var voteCards = {};
-var score = 0;
 var timer = 0;
 var origTimer = 0;
 var numRounds = 0;
 var currRound = 0;
 var state = 0;
+var prevState = 0;
 var length = 0;
+var voteCount = 0;
 var isLeader = false;
 var playedCard = false;
 var hasVoted = false;
+var voteStarted = false;
 
 // Create an object to hold the gamestates
 var GAMESTATE = {
@@ -38,7 +41,6 @@ var createUser = function createUser(data) {
     users[hash] = data.user;
     if (data.length === 1) isLeader = true;else isLeader = false;
     gameStart(data);
-    console.log(isLeader);
 };
 
 var cardStyle = {
@@ -80,12 +82,14 @@ var updatePlayers = function updatePlayers(data) {
     document.getElementById("scoreHolder").innerHTML = "";
     for (var i = 0; i < keys.length; i++) {
         var user = users[keys[i]];
+        if (currRound == 0) {
+            user.score = 0;
+        }
         var userScoreElement = document.createElement("h4");
         var userScore = document.createTextNode(user.name + ": " + user.score);
         userScoreElement.appendChild(userScore);
         document.getElementById("scoreHolder").appendChild(userScoreElement);
     }
-    console.log("Players in room: " + length);
     if (length < 3 && state > GAMESTATE.START && state < GAMESTATE.END) {
         socket.emit('gameOver');
     }
@@ -114,10 +118,10 @@ var gameStart = function gameStart(data) {
         if (length >= 3 && isLeader) {
             origTimer = timeSlider.value;
             timer = timeSlider.value;
-            numRounds = roundSlider.value;
-            state = 0;
+            //numRounds = roundSlider.value;
+            state = GAMESTATE.START;
             currRound = 0;
-            socket.emit('roundStart');
+            socket.emit('roundStart', { data: currRound });
         } else {
             socket.emit('msgToServer', { user: 'Server', msg: 'You must have at least 3 players ready to start.' });
         }
@@ -145,7 +149,23 @@ var updateTimers = function updateTimers(data) {
 };
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 var gameUpdate = function gameUpdate() {
+    var keys = Object.keys(voteCards);
     // starts timer at player selected value in seconds and counts down
+    if (state !== prevState) {
+        if (isLeader) socket.emit('stateUpdate', state);
+        prevState = state;
+    }
+    if (state === GAMESTATE.VOTE && timer > 0) {
+        voteStarted = true;
+    }
+
+    // Check if the player has played a card
+    for (var i = 0; i < keys.length; i++) {
+        if (keys[i] === hash) {
+            playedCard = true;
+        }
+    }
+
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
     ctx.font = "32px Palatino, Palatino Linotype, Palatino LT STD";
@@ -154,45 +174,39 @@ var gameUpdate = function gameUpdate() {
         socket.emit('timerUpdate', timer);
         ctx.fillText(timer, 975, 50);
     } else if (timer <= 0) {
-        timer = 0;
         ctx.fillText(timer, 975, 50);
         if (state === GAMESTATE.SELECT) {
-            state = GAMESTATE.VOTE;
             timer = origTimer;
-        } else if (state === GAMESTATE.VOTE && hasVoted) {
-            state = GAMESTATE.ENDROUND;
+            state = GAMESTATE.VOTE;
+            return;
+        } else if (state === GAMESTATE.VOTE && voteStarted) {
+            console.log('round over');
+            voteStarted = false;
+            //state = GAMESTATE.ENDROUND;
         }
         draw();
     }
-    // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
-    // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
-    // socket.emit('drawCard', ()); after user plays card
-
     // Counts up the votes when all the voting state is over
     if (state === GAMESTATE.ENDROUND) {
-        console.log('round over');
         hasVoted = false;
         playedCard = false;
-        var keys = Object.keys(voteCards);
-        for (var i = 0; i < keys.length; i++) {
-            users[keys[i]].score += voteCards[keys[i]].votes;
-            var data = { userID: keys[i], score: users[keys[i]].score };
+        for (var _i = 0; _i < keys.length; _i++) {
+            users[keys[_i]].score += voteCards[keys[_i]].votes;
+            var data = { userID: keys[_i], score: users[keys[_i]].score };
             socket.emit('scoreUpdated', data);
-            if (currRound === numRounds) {
-                socket.emit('gameOver');
-            }
         }
         voteCards = {};
         socket.emit('votesUpdated', voteCards);
         if (currRound < numRounds) {
-            currRound++;
-            state = GAMESTATE.SELECT;
-            timer = origTimer;
+            if (isLeader) {
+                console.log("being called");
+                socket.emit('roundStart', { data: currRound });
+                return;
+            }
         } else {
-            state = GAMESTATE.END;
+            socket.emit('gameOver');
         }
     }
-    //console.log("state: " + state);
 };
 
 // Draw the game
@@ -232,7 +246,7 @@ var draw = function draw() {
         if (voteKeys.length === length) {
             if (state === GAMESTATE.SELECT) {
                 timer = origTimer;
-                state = 2;
+                state = GAMESTATE.VOTE;
             }
             if (state === GAMESTATE.VOTE) {
                 //Prompt vote
@@ -240,11 +254,22 @@ var draw = function draw() {
                 ctx.fillText("Click on a card to vote for your favorite... ", canvas.width / 2 - 175, canvas.height - 150, 400);
             }
         }
+        var numVotes = 0;
+        for (var i = 0; i < voteKeys.length; i++) {
+            numVotes += voteCards[voteKeys[i]].votes;
+        }
+        if (numVotes >= length) {
+            console.log("length " + length);
+            if (state === GAMESTATE.VOTE) {
+                timer = origTimer;
+                state = GAMESTATE.ENDROUND;
+            }
+        }
 
         // Draw the player's hand
         ctx.font = cardStyle.explainFont;
-        for (var i = 0; i < users[hash].hand.length; i++) {
-            var card = users[hash].hand[i];
+        for (var _i2 = 0; _i2 < users[hash].hand.length; _i2++) {
+            var card = users[hash].hand[_i2];
             if (state === GAMESTATE.VOTE) {
                 ctx.globalAlpha = 0;
             } else if (state === GAMESTATE.SELECT) {
@@ -263,22 +288,28 @@ var draw = function draw() {
 
         // Draw the cards that are being voted on
         ctx.font = cardStyle.explainFont;
-        for (var _i = 0; _i < voteKeys.length; _i++) {
-            voteCards[voteKeys[_i]].x = 40 + _i * 200;
+        for (var _i3 = 0; _i3 < voteKeys.length; _i3++) {
+            voteCards[voteKeys[_i3]].x = 40 + _i3 * 200;
             if (voteKeys.length < length && timer > 0 && state === GAMESTATE.SELECT) {
-                ctx.drawImage(explainBack, 40 + _i * 200, 250);
+                ctx.drawImage(explainBack, 40 + _i3 * 200, 250);
                 ctx.fillStyle = cardStyle.cardColor;
                 ctx.fillStyle = cardStyle.textColor;
             } else if (voteKeys.length < length && timer <= 0) {
-                ctx.drawImage(emptyVertical, 40 + _i * 200, 250);
+                ctx.drawImage(emptyVertical, 40 + _i3 * 200, 250);
                 ctx.fillStyle = cardStyle.cardColor;
                 ctx.fillStyle = cardStyle.textColor;
-                displayWrappedText(ctx, voteCards[voteKeys[_i]].text, 50 + _i * 200, 295, explainMaxWidth, lineHeight + 5);
+                displayWrappedText(ctx, voteCards[voteKeys[_i3]].text, 50 + _i3 * 200, 295, explainMaxWidth, lineHeight + 5);
             } else if (voteKeys.length == length || state === GAMESTATE.VOTE) {
-                ctx.drawImage(emptyVertical, 40 + _i * 200, 250);
+                ctx.drawImage(emptyVertical, 40 + _i3 * 200, 250);
                 ctx.fillStyle = cardStyle.cardColor;
                 ctx.fillStyle = cardStyle.textColor;
-                displayWrappedText(ctx, voteCards[voteKeys[_i]].text, 50 + _i * 200, 295, explainMaxWidth, lineHeight + 5);
+                displayWrappedText(ctx, voteCards[voteKeys[_i3]].text, 50 + _i3 * 200, 295, explainMaxWidth, lineHeight + 5);
+            }
+
+            if (state === GAMESTATE.VOTE) {
+                ctx.font = "20px Palatino, Palatino Linotype, Palatino LT STD";
+                ctx.fillText("Votes: " + voteCards[voteKeys[_i3]].votes, 50 + _i3 * 200, 545, 400);
+                ctx.font = cardStyle.explainFont;
             }
         }
     }
@@ -302,6 +333,7 @@ var getMouse = function getMouse(e) {
 var mouseDownHandle = function mouseDownHandle(e) {
     var hand = users[hash].hand;
     var mouse = getMouse(e);
+    var voteKeys = Object.keys(voteCards);
     if (!playedCard && state === GAMESTATE.SELECT) {
         for (var i = 0; i < hand.length; i++) {
             if (mouse.x < hand[i].x + 30 + hand[i].width && mouse.x > hand[i].x + 30 && mouse.y < hand[i].y - 60 + hand[i].height && mouse.y > hand[i].y - 60) {
@@ -312,12 +344,11 @@ var mouseDownHandle = function mouseDownHandle(e) {
     }
 
     if (state === GAMESTATE.VOTE && !hasVoted) {
-        var voteKeys = Object.keys(voteCards);
-        for (var _i2 = 0; _i2 < voteKeys.length; _i2++) {
-            if (mouse.x < voteCards[voteKeys[_i2]].x + cardStyle.explainWidth && mouse.x > voteCards[voteKeys[_i2]].x && mouse.y < 250 + cardStyle.explainHeight && mouse.y > 250) {
-                if (voteKeys[_i2] !== hash) {
+        for (var _i4 = 0; _i4 < voteKeys.length; _i4++) {
+            if (mouse.x < voteCards[voteKeys[_i4]].x + cardStyle.explainWidth && mouse.x > voteCards[voteKeys[_i4]].x && mouse.y < 250 + cardStyle.explainHeight && mouse.y > 250) {
+                if (voteKeys[_i4] !== hash) {
                     hasVoted = true;
-                    socket.emit('vote', voteKeys[_i2]);
+                    socket.emit('vote', voteKeys[_i4]);
                     break;
                 }
             }
@@ -331,10 +362,10 @@ var mouseUpHandle = function mouseUpHandle(e) {
     var mouse = getMouse(e);
     for (var i = 0; i < hand.length; i++) {
         if (hand[i].clicked && state === GAMESTATE.SELECT) {
-            playedCard = true;
             socket.emit("cardPicked", hand[i]);
+            var data = { x: hand[i].x, y: hand[i].y, user: users[hash] };
             users[hash].hand.splice(i, 1);
-            socket.emit('drawCard', users[hash]);
+            socket.emit('drawCard', data);
             break;
         }
     }
@@ -342,6 +373,8 @@ var mouseUpHandle = function mouseUpHandle(e) {
 
 // Start a new round
 var startRound = function startRound(data) {
+    numRounds = document.querySelector('#roundSlider').value;
+    timer = document.querySelector('#timeSlider').value;
     document.querySelector('#start').style.display = "none";
     document.querySelector('#roundSlider').style.display = "none";
     document.querySelector('#timeSlider').style.display = "none";
@@ -350,10 +383,14 @@ var startRound = function startRound(data) {
     document.querySelector('#roundAmount').style.display = "none";
     document.querySelector('#timeAmount').style.display = "none";
     outcome = data;
-    setInterval(gameUpdate, 1000);
-    state = 1;
+    if (currRound == 0) gameloopVar = setInterval(function () {
+        gameUpdate();
+    }, 1000);
+    hasVoted = false;
+    playedCard = false;
+    state = GAMESTATE.SELECT;
     currRound++;
-    console.log(currRound + " " + numRounds);
+    console.log("starting round " + currRound);
     draw();
 };
 
@@ -367,21 +404,19 @@ var sendMessage = function sendMessage(e) {
     document.querySelector('#message').value = '';
 };
 
-// voting function -> reveals all cards and prompts players to vote; prompts server when vote is made or time runs out
-
 // results function -> reveals how many votes each card got, and gives corresponding player correct amount of points
 
 // end game function -> ends game if player has reached max points, or less than 3 people left in room
 var endGame = function endGame() {
-    console.log("Game over!");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    state = 4;
+    state = GAMESTATE.END;
     playedCard = false;
-    score = 0;
     hasVoted = false;
     voteCards.length = 0;
+    currRound = 0;
+    clearInterval(gameloopVar);
     document.querySelector('#start').style.display = "block";
     document.querySelector('#roundSlider').style.display = "block";
     document.querySelector('#timeSlider').style.display = "block";
@@ -389,6 +424,7 @@ var endGame = function endGame() {
     document.querySelector('#timeLabel').style.display = "block";
     document.querySelector('#roundAmount').style.display = "block";
     document.querySelector('#timeAmount').style.display = "block";
+    socket.emit('msgToServer', { user: 'Server', msg: 'Game over! Thanks for playing!' });
 };
 
 // delete user function -> if they leave room, erase their data
@@ -406,6 +442,12 @@ var updateLeader = function updateLeader(data) {
         timeSlider.disabled = false;
     }
 };
+
+var updateState = function updateState(data) {
+    state = data;
+    console.log(state);
+};
+
 // random num const
 var randomNum = function randomNum(r) {
     return Math.floor(Math.random() * r);
@@ -494,15 +536,22 @@ var connectSocket = function connectSocket() {
 
     socket.on('nameTaken', function (data) {
         window.alert(data.msg);
-        user.value = "";
-        roomNum.value = "";
+        user = "";
+        roomNum = "";
         socket.disconnect();
     });
 
     socket.on('maxLimit', function (data) {
         window.alert(data.msg);
-        user.value = "";
-        roomNum.value = "";
+        user = "";
+        roomNum = "";
+        socket.disconnect();
+    });
+
+    socket.on('gameInProgress', function (data) {
+        window.alert(data.msg);
+        user = "";
+        roomNum = "";
         socket.disconnect();
     });
 
@@ -512,9 +561,9 @@ var connectSocket = function connectSocket() {
     socket.on('newRound', startRound);
     socket.on('updatePlayers', updatePlayers);
     socket.on('voteCardsUpdated', updateVoteCards);
-    //socket.on('cardDrawn', cardDraw);
     socket.on('timerUpdated', updateTime);
     socket.on('updateLeader', updateLeader);
+    socket.on('updateState', updateState);
     socket.on('endGame', endGame);
     socket.on('left', removeUser);
 };

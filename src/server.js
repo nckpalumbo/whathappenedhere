@@ -29,13 +29,23 @@ server.listen(PORT, (err) => {
   console.log(`Listening on 127.0.0.1: ${PORT}`);
 });
 
+const voteCards = {};
 // create list of rooms
 const rooms = {};
+const gameStates = {};
 // Create a list of outcomes and explanations
 let outcomes = [];
 let explanations = [];
-const voteCards = {};
 
+// Read in the card data
+fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
+  if (err) throw err;
+  outcomes = data.toString().split('\n');
+});
+fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
+  if (err) throw err;
+  explanations = data.toString().split('\n');
+});
 // Handle a connection to the server
 io.on('connection', (sock) => {
   const socket = sock;
@@ -59,6 +69,8 @@ io.on('connection', (sock) => {
         socket.emit('maxLimit', { msg: 'Sorry, the maximum amount of players are in this room already.' });
       } else if (nameExists) {
         socket.emit('nameTaken', { msg: 'Sorry, this username exists in this room already.' });
+      } else if (gameStates[data.room] > 0 && gameStates[data.room] < 4) {
+        socket.emit('gameInProgress', { msg: 'Sorry, this game is already in progress.' });
       } else {
         // if player with username not in room and if game in room not started, let player join
         socket.emit('letJoin', { name: data.name, roomNum: data.room });
@@ -74,7 +86,6 @@ io.on('connection', (sock) => {
   });
   socket.on('join', (data) => {
     // message back to new user
-
     socket.name = data.name;
     socket.roomNum = data.room;
     socket.join(socket.roomNum);
@@ -113,14 +124,10 @@ io.on('connection', (sock) => {
   // Have the player draw a card
   socket.on('drawCard', (data) => {
     // Czech if the player's hand is full
-    rooms[socket.roomNum][socket.userID] = data;
+    rooms[socket.roomNum][socket.userID] = data.user;
     if (rooms[socket.roomNum][socket.userID].hand.length < 5) {
       // If not, give them a card
-      const explanation = new Card(explanations.pop(), 0, 0, 150, 250);
-      for (let j = 0; j < rooms[socket.roomNum][socket.userID].hand.length; j++) {
-        rooms[socket.roomNum][socket.userID].hand[j].x = 10 + (j * 200);
-        rooms[socket.roomNum][socket.userID].hand[j].y = 568;
-      }
+      const explanation = new Card(explanations.pop(), data.x, data.y, 150, 250);
       rooms[socket.roomNum][socket.userID].hand.push(explanation);
       // Update the client with the new information
       socket.emit('cardDrawn', rooms[socket.roomNum][socket.userID]);
@@ -148,30 +155,24 @@ io.on('connection', (sock) => {
     io.sockets.in(socket.roomNum).emit('updateTimer', newTimeNum);
   });
   // Host starts a new round
-  socket.on('roundStart', () => {
-  // Read in the card data
-    fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
-      if (err) throw err;
-      outcomes = data.toString().split('\n');
-    });
-    fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
-      if (err) throw err;
-      explanations = data.toString().split('\n');
-    });
-    outcomes = shuffle(outcomes);
-    explanations = shuffle(explanations);
+  socket.on('roundStart', (round) => {
+    if (round.data === 0) {
+      outcomes = shuffle(outcomes);
+      explanations = shuffle(explanations);
 
-    const keys = Object.keys(rooms[socket.roomNum]);
-    for (let i = 0; i < keys.length; i++) {
-      const player = rooms[socket.roomNum][keys[i]];
-      for (let j = 0; j < 5; j++) {
-        player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 250);
+      const keys = Object.keys(rooms[socket.roomNum]);
+      for (let i = 0; i < keys.length; i++) {
+        const player = rooms[socket.roomNum][keys[i]];
+        for (let j = 0; j < 5; j++) {
+          player.hand[j] = new Card(explanations.pop(), 10 + (j * 200), 568, 150, 250);
+        }
       }
     }
     const playersLength = Object.keys(rooms[socket.roomNum]);
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
     if (outcomes.length !== 0) {
       const outcome = new Card(outcomes.pop(), 450, 10, 200, 300);
+      console.log('called');
       io.sockets.in(socket.roomNum).emit('newRound', outcome);
     }
   });
@@ -184,6 +185,11 @@ io.on('connection', (sock) => {
       const time = data - 1;
       io.sockets.in(socket.roomNum).emit('timerUpdated', time);
     }
+  });
+
+  // Update the current state of the game in a room
+  socket.on('stateUpdate', (data) => {
+    gameStates[socket.roomNum] = data;
   });
 
   // Update the list of cards to be voted for serverside
@@ -218,13 +224,21 @@ io.on('connection', (sock) => {
   });
 
   socket.on('gameOver', () => {
+    // Read in the card data
+    fs.readFile('./src/outcomes.txt', 'utf8', (err, data) => {
+      if (err) throw err;
+      outcomes = data.toString().split('\n');
+    });
+    fs.readFile('./src/explanations.txt', 'utf8', (err, data) => {
+      if (err) throw err;
+      explanations = data.toString().split('\n');
+    });
     io.sockets.in(socket.roomNum).emit('endGame');
   });
 
   // Handle a user disconnecting
   socket.on('disconnect', () => {
     // Send the info of the user leaving to the clients
-    console.log(Object.keys(rooms[socket.roomNum]));
     const keys = Object.keys(rooms[socket.roomNum]);
     if (keys.length > 1) {
       for (let i = 0; i < keys.length; i++) {

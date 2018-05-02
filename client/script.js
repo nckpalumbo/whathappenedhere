@@ -7,18 +7,21 @@ let outcomeBack;
 let explainBack;
 let emptyHorizontal;
 let emptyVertical;
+let gameloopVar;
 let users = {};
 let voteCards = {};
-let score = 0;
 let timer = 0;
 let origTimer = 0;
 let numRounds = 0;
 let currRound = 0;
 let state = 0;
+let prevState = 0;
 let length = 0;
+let voteCount = 0;
 let isLeader = false;
 let playedCard = false;
 let hasVoted = false;
+let voteStarted = false;
 
 // Create an object to hold the gamestates
 const GAMESTATE = {
@@ -39,7 +42,6 @@ const createUser = (data) => {
   else
       isLeader = false;
   gameStart(data);
-  console.log(isLeader);
 };
 
 const cardStyle = {
@@ -66,7 +68,7 @@ const displayWrappedText = (context, text, x, y, maxWidth, lineHeight) => {
       line = words[i] + ' ';
       y += lineHeight;
     }
-    else{
+    else {
       line = testLine;
     }
   }
@@ -82,12 +84,14 @@ const updatePlayers = (data) => {
     document.getElementById("scoreHolder").innerHTML = "";
     for(let i = 0; i < keys.length; i++) {
         let user = users[keys[i]];
+        if(currRound == 0) {
+            user.score = 0;
+        }
         var userScoreElement = document.createElement("h4");
         var userScore = document.createTextNode(user.name + ": " + user.score);
         userScoreElement.appendChild(userScore);
         document.getElementById("scoreHolder").appendChild(userScoreElement);
     }
-    console.log("Players in room: " + length);
     if(length < 3 && (state > GAMESTATE.START && state < GAMESTATE.END)) {
         socket.emit('gameOver');
     }
@@ -117,10 +121,10 @@ const gameStart = (data) => {
         if(length >= 3 && isLeader) {
             origTimer = timeSlider.value;
             timer = timeSlider.value;
-            numRounds = roundSlider.value;
-            state = 0;
+            //numRounds = roundSlider.value;
+            state = GAMESTATE.START;
             currRound = 0;
-            socket.emit('roundStart');
+            socket.emit('roundStart', { data: currRound });
         }
         else {
             socket.emit('msgToServer', {user: 'Server', msg: 'You must have at least 3 players ready to start.' });
@@ -139,7 +143,6 @@ const updateRounds = (data) => {
     const roundAmount = document.querySelector('#roundAmount');
     roundSlider.value = data;
     roundAmount.innerHTML = data;
-    
 };
 
 const updateTimers = (data) => {
@@ -150,7 +153,24 @@ const updateTimers = (data) => {
 };
 // game update -> prompts players to make card selection; prompts server when a card is picked or time runs out
 const gameUpdate = () => {
+    let keys = Object.keys(voteCards);
     // starts timer at player selected value in seconds and counts down
+    if(state !== prevState) {
+        if(isLeader)
+            socket.emit('stateUpdate', state);
+        prevState = state;
+    }
+    if(state === GAMESTATE.VOTE && timer > 0) {
+        voteStarted = true;
+    }
+    
+    // Check if the player has played a card
+    for(let i = 0; i < keys.length; i++) {
+        if(keys[i] === hash) {
+            playedCard = true;
+        }
+    }
+    
     ctx.fillStyle = "lightblue";
     ctx.fillRect(944, 0, 80, 80);
     ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
@@ -158,47 +178,42 @@ const gameUpdate = () => {
     if(timer > 0 && (state === GAMESTATE.SELECT || state === GAMESTATE.VOTE)) {
         socket.emit('timerUpdate', timer);
         ctx.fillText(timer, 975, 50);
-    } else if (timer <= 0){
-        timer = 0;
+    }
+    else if (timer <= 0) {
         ctx.fillText(timer, 975, 50);
         if(state === GAMESTATE.SELECT) {
-            state = GAMESTATE.VOTE;
             timer = origTimer;
-        } else if(state === GAMESTATE.VOTE && hasVoted) {
-            state = GAMESTATE.ENDROUND;
+            state = GAMESTATE.VOTE;
+            return;
+        } else if(state === GAMESTATE.VOTE && voteStarted) {
+            console.log('round over');
+            voteStarted = false;
+            //state = GAMESTATE.ENDROUND;
         }
         draw();
-    }
-    // tells client to click on a card (eventually when hovered over, make it increase in y value to show it is hovered)
-    // on click event where when user plays card, it leaves their hand and joins the pile near the outcome card
-    // socket.emit('drawCard', ()); after user plays card
-    
+    }    
     // Counts up the votes when all the voting state is over
     if(state === GAMESTATE.ENDROUND) {
-        console.log('round over');
         hasVoted = false;
         playedCard = false;
-        let keys = Object.keys(voteCards);
         for(let i = 0; i < keys.length; i++) {
             users[keys[i]].score += voteCards[keys[i]].votes;
             let data = { userID: keys[i], score: users[keys[i]].score };
             socket.emit('scoreUpdated', data);
-            if(currRound === numRounds) {
-                socket.emit('gameOver');
-            }
         }
         voteCards = {};
         socket.emit('votesUpdated', voteCards);
         if(currRound < numRounds) {
-            currRound++;
-            state = GAMESTATE.SELECT;
-            timer = origTimer;
+            if(isLeader) {
+                console.log("being called");
+                socket.emit('roundStart', { data: currRound });
+                return;
+            }
         } else {
-            state = GAMESTATE.END;
+            socket.emit('gameOver');
         }
         
     }
-    //console.log("state: " + state);
 };
 
 // Draw the game
@@ -241,11 +256,22 @@ const draw = () => {
         if(voteKeys.length === length) {
             if(state === GAMESTATE.SELECT) {
                 timer = origTimer;
-                state = 2;
+                state = GAMESTATE.VOTE;
             }
             if(state === GAMESTATE.VOTE) { //Prompt vote
                 ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
                 ctx.fillText("Click on a card to vote for your favorite... ", (canvas.width / 2) - 175, canvas.height - 150, 400);
+            }
+        }
+        let numVotes = 0;
+        for(let i = 0; i < voteKeys.length; i++) {
+            numVotes += voteCards[voteKeys[i]].votes;
+        }
+        if(numVotes >= length) {
+            console.log("length " + length);
+            if(state === GAMESTATE.VOTE) {
+                timer = origTimer;
+                state = GAMESTATE.ENDROUND;
             }
         }
 
@@ -292,6 +318,12 @@ const draw = () => {
                 ctx.fillStyle = cardStyle.textColor;
                 displayWrappedText(ctx, voteCards[voteKeys[i]].text, (50 + i*200), 295, explainMaxWidth, lineHeight + 5);
             }
+            
+            if(state === GAMESTATE.VOTE) {
+                ctx.font = ("20px Palatino, Palatino Linotype, Palatino LT STD");
+                ctx.fillText("Votes: " + voteCards[voteKeys[i]].votes, (50 + i*200), 545, 400);
+                ctx.font = cardStyle.explainFont;
+            }
         }
     }
 };
@@ -314,6 +346,7 @@ const getMouse = (e) => {
 const mouseDownHandle = (e) => {
     let hand = users[hash].hand;
     const mouse = getMouse(e);
+    const voteKeys = Object.keys(voteCards);
     if(!playedCard && state === GAMESTATE.SELECT){
         for(let i = 0; i < hand.length; i++) {
             if(mouse.x < ((hand[i].x + 30) + hand[i].width) && 
@@ -327,7 +360,6 @@ const mouseDownHandle = (e) => {
     }
     
     if(state === GAMESTATE.VOTE && !hasVoted) {
-        const voteKeys = Object.keys(voteCards);
         for(let i = 0; i < voteKeys.length; i++) {
             if(mouse.x < (voteCards[voteKeys[i]].x + cardStyle.explainWidth) && 
                 mouse.x > voteCards[voteKeys[i]].x &&
@@ -349,10 +381,10 @@ const mouseUpHandle = (e) => {
     const mouse = getMouse(e);
     for(let i = 0; i < hand.length; i++) {
         if(hand[i].clicked && state === GAMESTATE.SELECT) {
-            playedCard = true;
             socket.emit("cardPicked", hand[i]);
+            let data = { x: hand[i].x, y: hand[i].y, user: users[hash], };
             users[hash].hand.splice(i, 1);
-            socket.emit('drawCard', users[hash]);
+            socket.emit('drawCard', data);
             break;
         }
     }
@@ -360,6 +392,8 @@ const mouseUpHandle = (e) => {
 
 // Start a new round
 const startRound = (data) => {
+    numRounds =  document.querySelector('#roundSlider').value;
+    timer =  document.querySelector('#timeSlider').value;
     document.querySelector('#start').style.display = "none";
     document.querySelector('#roundSlider').style.display = "none";
     document.querySelector('#timeSlider').style.display = "none";
@@ -368,10 +402,13 @@ const startRound = (data) => {
     document.querySelector('#roundAmount').style.display = "none";
     document.querySelector('#timeAmount').style.display = "none";
     outcome = data;
-    setInterval(gameUpdate, 1000);
-    state = 1;
+    if(currRound == 0)
+        gameloopVar = setInterval(function() { gameUpdate() }, 1000);
+    hasVoted = false;
+    playedCard = false;
+    state = GAMESTATE.SELECT;
     currRound++;
-    console.log(currRound + " " + numRounds);
+    console.log("starting round " + currRound);
     draw();
 };
 
@@ -385,21 +422,19 @@ var sendMessage = function sendMessage(e) {
     document.querySelector('#message').value = '';
 };
 
-// voting function -> reveals all cards and prompts players to vote; prompts server when vote is made or time runs out
-
 // results function -> reveals how many votes each card got, and gives corresponding player correct amount of points
 
 // end game function -> ends game if player has reached max points, or less than 3 people left in room
 const endGame = () => {
-    console.log("Game over!");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "lightblue";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    state = 4;
+    state = GAMESTATE.END;
     playedCard = false;
-    score = 0;
     hasVoted = false;
     voteCards.length = 0;
+    currRound = 0;
+    clearInterval(gameloopVar);
     document.querySelector('#start').style.display = "block";
     document.querySelector('#roundSlider').style.display = "block";
     document.querySelector('#timeSlider').style.display = "block";
@@ -407,6 +442,7 @@ const endGame = () => {
     document.querySelector('#timeLabel').style.display = "block";
     document.querySelector('#roundAmount').style.display = "block";
     document.querySelector('#timeAmount').style.display = "block";
+    socket.emit('msgToServer', {user: 'Server', msg: 'Game over! Thanks for playing!' });
 };
 
 // delete user function -> if they leave room, erase their data
@@ -424,6 +460,12 @@ const updateLeader = (data) => {
       timeSlider.disabled = false;
   }  
 };
+
+const updateState = (data) => {
+    state = data;
+    console.log(state);
+};
+
 // random num const
 const randomNum = r => Math.floor(Math.random() * r);
 
@@ -511,15 +553,22 @@ const connectSocket = () => {
 
   socket.on('nameTaken', (data) => {
       window.alert(data.msg);
-      user.value = "";
-      roomNum.value = "";
+      user = "";
+      roomNum = "";
       socket.disconnect();
   });
     
   socket.on('maxLimit', (data) => {
       window.alert(data.msg);
-      user.value = "";
-      roomNum.value = "";
+      user = "";
+      roomNum = "";
+      socket.disconnect();
+  });
+    
+  socket.on('gameInProgress', (data) => {
+      window.alert(data.msg);
+      user = "";
+      roomNum = "";
       socket.disconnect();
   });
     
@@ -529,9 +578,9 @@ const connectSocket = () => {
   socket.on('newRound', startRound);
   socket.on('updatePlayers', updatePlayers);
   socket.on('voteCardsUpdated', updateVoteCards);
-  //socket.on('cardDrawn', cardDraw);
   socket.on('timerUpdated', updateTime);
   socket.on('updateLeader', updateLeader);
+  socket.on('updateState', updateState);
   socket.on('endGame', endGame);
   socket.on('left', removeUser);
 };
