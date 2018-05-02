@@ -111,16 +111,15 @@ io.on('connection', (sock) => {
   };
 
   // Have the player draw a card
-  socket.on('drawCard', () => {
-    const player = rooms[socket.roomNum][socket.userID];
-
+  socket.on('drawCard', (data) => {
     // Czech if the player's hand is full
-    if (player.hand.length > 5) {
+    rooms[socket.roomNum][socket.userID] = data;
+    if (rooms[socket.roomNum][socket.userID].hand.length < 5) {
       // If not, give them a card
       const explanation = new Card(explanations.pop(), 0, 0, 150, 250);
-      player.hand.unshift(explanation);
+      rooms[socket.roomNum][socket.userID].hand.push(explanation);
       // Update the client with the new information
-      socket.emit('cardDrawn', player);
+      socket.emit('cardDrawn', rooms[socket.roomNum][socket.userID]);
     }
   });
 

@@ -176,6 +176,8 @@ const gameUpdate = () => {
     // Counts up the votes when all the voting state is over
     if(state === GAMESTATE.ENDROUND) {
         console.log('round over');
+        hasVoted = false;
+        playedCard = false;
         let keys = Object.keys(voteCards);
         for(let i = 0; i < keys.length; i++) {
             users[keys[i]].score += voteCards[keys[i]].votes;
@@ -186,6 +188,7 @@ const gameUpdate = () => {
             }
         }
         voteCards = {};
+        socket.emit('votesUpdated', voteCards);
         if(currRound < numRounds) {
             currRound++;
             state = GAMESTATE.SELECT;
@@ -348,7 +351,8 @@ const mouseUpHandle = (e) => {
         if(hand[i].clicked && state === GAMESTATE.SELECT) {
             playedCard = true;
             socket.emit("cardPicked", hand[i]);
-            //hand.splice(i);
+            //users[hash].hand.splice(i);
+            //socket.emit('drawCard', users[hash]);
             break;
         }
     }
