@@ -88,7 +88,7 @@ const updatePlayers = (data) => {
         document.getElementById("scoreHolder").appendChild(userScoreElement);
     }
     console.log("Players in room: " + length);
-    if(length < 3 && (state > 0 && state < 4)) {
+    if(length < 3 && (state > GAMESTATE.START && state < GAMESTATE.END)) {
         socket.emit('gameOver');
     }
 };
@@ -162,8 +162,10 @@ const gameUpdate = () => {
         timer = 0;
         ctx.fillText(timer, 975, 50);
         if(state === GAMESTATE.SELECT) {
-            state = 2;
+            state = GAMESTATE.VOTE;
             timer = origTimer;
+        } else if(state === GAMESTATE.VOTE && hasVoted) {
+            state = GAMESTATE.ENDROUND;
         }
         draw();
     }
@@ -173,16 +175,27 @@ const gameUpdate = () => {
     
     // Counts up the votes when all the voting state is over
     if(state === GAMESTATE.ENDROUND) {
+        console.log('round over');
         let keys = Object.keys(voteCards);
         for(let i = 0; i < keys.length; i++) {
             users[keys[i]].score += voteCards[keys[i]].votes;
-            socket.emit('scoreUpdated', users[keys[i]].score);
+            let data = { userID: keys[i], score: users[keys[i]].score };
+            socket.emit('scoreUpdated', data);
             if(currRound === numRounds) {
                 socket.emit('gameOver');
             }
         }
+        voteCards = {};
+        if(currRound < numRounds) {
+            currRound++;
+            state = GAMESTATE.SELECT;
+            timer = origTimer;
+        } else {
+            state = GAMESTATE.END;
+        }
+        
     }
-    console.log("state: " + state);
+    //console.log("state: " + state);
 };
 
 // Draw the game
@@ -197,6 +210,7 @@ const draw = () => {
         let explainMaxWidth = 135;
         let lineHeight = 30;
 
+        // Draw the timer
         ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
         ctx.fillStyle = cardStyle.textColor;
         if(timer > 0)
@@ -204,6 +218,11 @@ const draw = () => {
         else
             ctx.fillText('0', 975, 50);
 
+        // Draw the round counter
+        ctx.font = ("32px Palatino, Palatino Linotype, Palatino LT STD");
+        ctx.fillStyle = cardStyle.textColor;
+        ctx.fillText("Round: " + currRound + "/" + numRounds, 25, 50);
+        
         // Draw the outcome card
         ctx.font = cardStyle.outcomeFont;
         ctx.fillStyle = cardStyle.cardColor;
@@ -251,7 +270,8 @@ const draw = () => {
 
         // Draw the cards that are being voted on
         ctx.font = cardStyle.explainFont;
-        for(let i = 0; i < voteKeys.length; i++) {0
+        for(let i = 0; i < voteKeys.length; i++) {
+            voteCards[voteKeys[i]].x = (40 + i*200);
             if(voteKeys.length < length && timer > 0 && state === GAMESTATE.SELECT) {
                 ctx.drawImage(explainBack, (40 + i*200), 250);
                 ctx.fillStyle = cardStyle.cardColor;
@@ -306,13 +326,13 @@ const mouseDownHandle = (e) => {
     if(state === GAMESTATE.VOTE && !hasVoted) {
         const voteKeys = Object.keys(voteCards);
         for(let i = 0; i < voteKeys.length; i++) {
-            if(mouse.x < (voteCards[voteKeys[i]].x + voteCards[voteKeys[i]].width) && 
+            if(mouse.x < (voteCards[voteKeys[i]].x + cardStyle.explainWidth) && 
                 mouse.x > voteCards[voteKeys[i]].x &&
-                mouse.y < (voteCards[voteKeys[i]].y + voteCards[voteKeys[i]].height) &&
-                mouse.y > voteCards[voteKeys[i]].y) {
+                mouse.y < (250 + cardStyle.explainHeight) &&
+                mouse.y > 250) {
                 if(voteKeys[i] !== hash) {
-                    voteCards[voteKeys[i]].votes++;
                     hasVoted = true;
+                    socket.emit('vote', voteKeys[i]);
                     break;
                 }
             }
@@ -325,7 +345,7 @@ const mouseUpHandle = (e) => {
     let hand = users[hash].hand;
     const mouse = getMouse(e);
     for(let i = 0; i < hand.length; i++) {
-        if(hand[i].clicked) {
+        if(hand[i].clicked && state === GAMESTATE.SELECT) {
             playedCard = true;
             socket.emit("cardPicked", hand[i]);
             //hand.splice(i);

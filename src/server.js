@@ -56,7 +56,7 @@ io.on('connection', (sock) => {
         }
       }
       if (Object.keys(rooms[data.room]).length > 4) {
-        socket.emit('maxLimit', {msg: 'Sorry, the maximum amount of players are in this room already.'});
+        socket.emit('maxLimit', { msg: 'Sorry, the maximum amount of players are in this room already.' });
       } else if (nameExists) {
         socket.emit('nameTaken', { msg: 'Sorry, this username exists in this room already.' });
       } else {
@@ -125,7 +125,7 @@ io.on('connection', (sock) => {
   });
 
   socket.on('scoreUpdated', (data) => {
-    rooms[socket.roomNum][socket.userID].score = data;
+    rooms[socket.roomNum][data.userID].score = data.score;
     const playersLength = Object.keys(rooms[socket.roomNum]);
     io.sockets.in(socket.roomNum).emit('updatePlayers', { room: rooms[socket.roomNum], length: playersLength.length });
   });
@@ -183,6 +183,18 @@ io.on('connection', (sock) => {
     }
   });
 
+  // Update the list of cards to be voted for serverside
+  socket.on('votesUpdated', (data) => {
+    voteCards[socket.roomNum] = data;
+    io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
+  });
+
+  // Handle the character voting for a card
+  socket.on('vote', (data) => {
+    voteCards[socket.roomNum][data].votes++;
+    io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
+  });
+
   // Handle when a user clicks the explanation for the current outcome
   socket.on('cardPicked', (data) => {
     const keys = Object.keys(voteCards);
@@ -201,11 +213,11 @@ io.on('connection', (sock) => {
     }
     io.sockets.in(socket.roomNum).emit('voteCardsUpdated', voteCards[socket.roomNum]);
   });
-    
+
   socket.on('gameOver', () => {
-     io.sockets.in(socket.roomNum).emit('endGame'); 
+    io.sockets.in(socket.roomNum).emit('endGame');
   });
-    
+
   // Handle a user disconnecting
   socket.on('disconnect', () => {
     // Send the info of the user leaving to the clients
