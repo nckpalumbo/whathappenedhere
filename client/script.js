@@ -351,8 +351,8 @@ const mouseUpHandle = (e) => {
         if(hand[i].clicked && state === GAMESTATE.SELECT) {
             playedCard = true;
             socket.emit("cardPicked", hand[i]);
-            //users[hash].hand.splice(i);
-            //socket.emit('drawCard', users[hash]);
+            users[hash].hand.splice(i, 1);
+            socket.emit('drawCard', users[hash]);
             break;
         }
     }

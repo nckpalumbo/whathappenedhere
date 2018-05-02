@@ -117,6 +117,10 @@ io.on('connection', (sock) => {
     if (rooms[socket.roomNum][socket.userID].hand.length < 5) {
       // If not, give them a card
       const explanation = new Card(explanations.pop(), 0, 0, 150, 250);
+      for (let j = 0; j < rooms[socket.roomNum][socket.userID].hand.length; j++) {
+        rooms[socket.roomNum][socket.userID].hand[j].x = 10 + (j * 200);
+        rooms[socket.roomNum][socket.userID].hand[j].y = 568;
+      }
       rooms[socket.roomNum][socket.userID].hand.push(explanation);
       // Update the client with the new information
       socket.emit('cardDrawn', rooms[socket.roomNum][socket.userID]);
